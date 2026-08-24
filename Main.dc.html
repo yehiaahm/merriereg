@@ -1,0 +1,658 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --cream:#ECE5D8;
+      --cream-2:#E2D9C8;
+      --ink:#1C1712;
+      --ink-soft:#4A4038;
+      --accent:#D6421D;
+      --accent-soft:#E27E56;
+      --line:rgba(28,23,18,0.14);
+      --display:'Bebas Neue', Impact, 'Arial Narrow', sans-serif;
+      --body:'Archivo', 'Helvetica Neue', Arial, sans-serif;
+    }
+    *{box-sizing:border-box;}
+    .mr-page{
+      margin:0; padding:0; width:100%;
+      background:var(--cream); color:var(--ink);
+      font-family:var(--body);
+      -webkit-font-smoothing:antialiased;
+      overflow-x:hidden;
+      position:relative;
+    }
+    .mr-page[data-motion="off"] *{animation:none !important; transition:none !important;}
+    a{color:var(--accent); text-decoration:none;}
+    a:hover{color:var(--ink);}
+    .mr-container{max-width:1180px; margin:0 auto; padding:0 40px;}
+    .mr-eyebrow{
+      font-family:var(--body); font-weight:700; letter-spacing:0.22em; text-transform:uppercase;
+      font-size:12px; color:var(--ink-soft);
+    }
+    .mr-h1{
+      font-family:var(--display); font-weight:400; text-transform:uppercase;
+      letter-spacing:0.01em; line-height:0.92; margin:0;
+      font-size:clamp(52px, 9vw, 128px);
+    }
+    .mr-h2{
+      font-family:var(--display); font-weight:400; text-transform:uppercase;
+      letter-spacing:0.01em; line-height:0.94; margin:0;
+      font-size:clamp(38px, 6vw, 78px);
+    }
+    .mr-lede{
+      font-family:var(--body); font-weight:500; color:var(--ink-soft);
+      font-size:clamp(15px,1.6vw,19px); line-height:1.6; max-width:44ch;
+    }
+    .mr-line-mask{display:block; overflow:hidden;}
+    .mr-line{
+      display:block; transform:translateY(112%);
+      transition:transform 1s cubic-bezier(.16,.8,.24,1);
+    }
+    .mr-hero-title--in .mr-line{transform:translateY(0);}
+
+    .mr-grain{
+      position:fixed; inset:0; z-index:300; pointer-events:none;
+      opacity:0.045; mix-blend-mode:overlay;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    /* ---- reveal-on-scroll ---- */
+    .reveal{opacity:0; transform:translateY(28px); transition:opacity 0.9s cubic-bezier(.16,.8,.24,1), transform 0.9s cubic-bezier(.16,.8,.24,1);}
+    .reveal--visible{opacity:1; transform:translateY(0);}
+
+    /* ---- promo bar ---- */
+    .mr-promo-bar{
+      background:var(--accent); color:var(--cream); overflow:hidden; white-space:nowrap;
+      padding:11px 0; position:relative; z-index:60;
+    }
+    .mr-promo-track{display:inline-flex; animation:mr-marquee 24s linear infinite;}
+    .mr-promo-track span{
+      font-family:var(--body); font-weight:700; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;
+      padding:0 24px; display:inline-flex; align-items:center; gap:24px;
+    }
+    .mr-promo-track span i{width:4px; height:4px; border-radius:50%; background:var(--cream); display:inline-block; font-style:normal; opacity:0.85;}
+
+    /* ---- nav ---- */
+    .mr-nav{
+      position:sticky; top:0; z-index:50;
+      display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      padding:22px 40px; background:rgba(236,229,216,0.92);
+      backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+      border-bottom:1px solid transparent; transition:border-color 0.4s ease, background 0.4s ease;
+    }
+    .mr-nav .mr-mobile-menu{flex-basis:100%; width:100%; margin:0 -40px; padding-left:40px; padding-right:40px;}
+    .mr-nav.mr-nav--scrolled{border-bottom-color:var(--line); background:rgba(236,229,216,0.92);}
+    .mr-wordmark{
+      font-family:var(--display); font-size:24px; letter-spacing:0.06em; line-height:1;
+      display:flex; align-items:center; gap:10px;
+    }
+    .mr-wordmark-dot{width:9px; height:9px; border-radius:50%; background:var(--accent); flex:0 0 auto;}
+    .mr-nav-links{display:flex; gap:34px; align-items:center;}
+    .mr-nav-links a{
+      font-size:12px; font-weight:700; letter-spacing:0.16em; text-transform:uppercase; color:var(--ink);
+      position:relative; padding-bottom:3px;
+    }
+    .mr-nav-links a::after{
+      content:''; position:absolute; left:0; bottom:0; width:0; height:1px; background:var(--accent);
+      transition:width 0.3s ease;
+    }
+    .mr-nav-links a:hover::after{width:100%;}
+    .mr-nav-cta{
+      font-size:11px; font-weight:700; letter-spacing:0.14em; text-transform:uppercase;
+      color:var(--cream); background:var(--ink); padding:10px 18px; border-radius:2px;
+      transition:background 0.25s ease;
+    }
+    .mr-nav-cta:hover{background:var(--accent); color:var(--cream);}
+
+    .mr-menu-btn{
+      display:none; background:none; border:none; padding:6px; margin:-6px; cursor:pointer;
+      flex-direction:column; gap:5px; align-items:center; justify-content:center; width:34px; height:34px;
+    }
+    .mr-menu-btn span{width:22px; height:2px; background:var(--ink); display:block; transition:transform 0.3s ease, opacity 0.3s ease;}
+    .mr-menu-btn.mr-menu-btn--open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+    .mr-menu-btn.mr-menu-btn--open span:nth-child(2){opacity:0;}
+    .mr-menu-btn.mr-menu-btn--open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+
+    .mr-mobile-menu{
+      display:none; flex-direction:column;
+      max-height:0; overflow:hidden; opacity:0;
+      transition:max-height 0.35s cubic-bezier(.16,.8,.24,1), opacity 0.3s ease;
+      background:var(--cream); border-bottom:1px solid transparent;
+      padding:0 24px;
+    }
+    .mr-mobile-menu a{
+      padding:15px 2px; font-size:14px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink);
+      border-bottom:1px solid var(--line);
+    }
+    .mr-mobile-menu a:last-child{border-bottom:none;}
+    .mr-mobile-menu.mr-mobile-menu--open{max-height:320px; opacity:1; border-bottom-color:var(--line);}
+
+    /* ---- hero ---- */
+    .mr-hero{
+      position:relative; min-height:min(94vh,860px); display:flex; align-items:center;
+      padding:60px 40px 40px; overflow:hidden;
+    }
+    .mr-hero-grid{
+      max-width:1180px; margin:0 auto; width:100%;
+      display:grid; grid-template-columns:1.05fr 0.95fr; align-items:center; gap:24px;
+      position:relative; z-index:2;
+    }
+    .mr-hero-copy{display:flex; flex-direction:column; gap:26px;}
+    .mr-hero-tagbar{display:flex; align-items:center; gap:14px;}
+    .mr-hero-tagbar .mr-eyebrow{color:var(--accent);}
+    .mr-rule{width:34px; height:1px; background:var(--line);}
+    .mr-hero-actions{display:flex; align-items:center; gap:22px; margin-top:6px; flex-wrap:wrap;}
+    .mr-btn-primary{
+      font-family:var(--body); font-weight:700; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;
+      color:var(--cream); background:var(--ink); padding:16px 30px; border-radius:2px;
+      display:inline-flex; align-items:center; gap:10px; transition:background 0.25s ease, transform 0.25s ease;
+    }
+    .mr-btn-primary:hover{background:var(--accent); color:var(--cream); transform:translateY(-2px);}
+    .mr-btn-ghost{
+      font-family:var(--body); font-weight:700; font-size:12px; letter-spacing:0.14em; text-transform:uppercase;
+      color:var(--ink); display:inline-flex; align-items:center; gap:8px; padding-bottom:2px;
+      border-bottom:1px solid var(--ink); transition:color 0.25s ease, border-color 0.25s ease;
+    }
+    .mr-btn-ghost:hover{color:var(--accent); border-color:var(--accent);}
+
+    .mr-hero-visual{position:relative; display:flex; align-items:center; justify-content:center;}
+    .mr-hero-visual::before{
+      content:''; position:absolute; inset:-8%; z-index:0; border-radius:50%;
+      background:radial-gradient(circle, var(--accent) 0%, transparent 64%);
+      opacity:0.18; filter:blur(48px); pointer-events:none;
+    }
+    .mr-hero-visual-inner{
+      position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px;
+      opacity:0; transform:scale(0.7) rotate(-10deg);
+      transition:opacity 1.2s cubic-bezier(.16,.8,.24,1), transform 0.7s cubic-bezier(.16,.8,.24,1);
+      will-change:transform;
+    }
+    .mr-hero-visual-inner--in{opacity:1; transform:scale(1) rotate(0deg);}
+    .mr-dotmark{width:min(100%,460px); height:auto; display:block;}
+    .mr-dotmark-rings{transform-origin:250px 250px; animation:mr-spin 130s linear infinite;}
+    @keyframes mr-spin{from{transform:rotate(0deg);} to{transform:rotate(360deg);}}
+    .mr-dot{animation:mr-pulse 5.5s ease-in-out infinite;}
+    @keyframes mr-pulse{0%,100%{opacity:var(--o,0.6);} 50%{opacity:calc(var(--o,0.6)*0.72);}}
+    .mr-dotmark-core{animation:mr-breathe 6s ease-in-out infinite;}
+    @keyframes mr-breathe{0%,100%{transform:scale(1);} 50%{transform:scale(1.035);}}
+    .mr-dotmark-label{
+      text-align:center; display:flex; flex-direction:column; align-items:center; gap:6px;
+    }
+    .mr-dotmark-label .mr-wordmark{font-size:26px; color:var(--accent); letter-spacing:0.07em;}
+    .mr-dotmark-label .mr-wordmark .mr-wordmark-dot{background:var(--accent);}
+    .mr-dotmark-label span.mr-estd{
+      font-size:11px; font-weight:700; letter-spacing:0.24em; color:var(--accent);
+    }
+
+    .mr-scrollcue{
+      position:absolute; left:50%; bottom:26px; transform:translateX(-50%);
+      display:flex; flex-direction:column; align-items:center; gap:8px; z-index:2;
+    }
+    .mr-scrollcue span{font-size:10px; font-weight:700; letter-spacing:0.22em; color:var(--ink-soft);}
+    .mr-scrollcue-line{width:1px; height:34px; background:linear-gradient(var(--ink-soft), transparent); animation:mr-cue 1.8s ease-in-out infinite;}
+    @keyframes mr-cue{0%{opacity:0.2; transform:scaleY(0.4); transform-origin:top;} 50%{opacity:1; transform:scaleY(1); transform-origin:top;} 100%{opacity:0.2; transform:scaleY(0.4); transform-origin:top;}}
+
+    /* ---- marquee ---- */
+    .mr-marquee{
+      background:var(--ink); color:var(--cream); overflow:hidden; white-space:nowrap;
+      padding:16px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+    }
+    .mr-marquee-track{display:inline-flex; animation:mr-marquee 32s linear infinite;}
+    .mr-marquee-track span{
+      font-family:var(--display); font-size:22px; letter-spacing:0.04em; text-transform:uppercase;
+      padding:0 26px; display:inline-flex; align-items:center; gap:26px;
+    }
+    .mr-marquee-track span i{width:6px; height:6px; border-radius:50%; background:var(--accent); font-style:normal; display:inline-block;}
+    @keyframes mr-marquee{from{transform:translateX(0);} to{transform:translateX(-50%);}}
+
+    /* ---- showcase ---- */
+    .mr-showcase{padding:130px 0 110px;}
+    .mr-showcase-head{
+      display:grid; grid-template-columns:1.2fr 1fr; gap:40px; align-items:end; margin-bottom:64px;
+    }
+    .mr-badge{
+      display:inline-flex; align-items:center; gap:8px; font-size:11px; font-weight:700; letter-spacing:0.16em;
+      text-transform:uppercase; color:var(--accent); border:1px solid var(--accent); border-radius:999px;
+      padding:7px 14px 7px 10px; width:fit-content;
+    }
+    .mr-badge i{width:6px; height:6px; border-radius:50%; background:var(--accent); display:inline-block; animation:mr-pulse 2.2s ease-in-out infinite; font-style:normal; --o:1;}
+
+    .mr-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:22px;}
+    .mr-card{
+      background:var(--cream-2); border:1px solid var(--line); border-radius:3px;
+      padding:26px 22px 24px; display:flex; flex-direction:column; gap:18px;
+      transition:transform 0.4s cubic-bezier(.16,.8,.24,1), border-color 0.4s ease, background 0.4s ease;
+    }
+    .mr-card:hover{transform:translateY(-8px); border-color:var(--accent); background:var(--cream);}
+    .mr-card-icon{
+      width:100%; aspect-ratio:5/6; display:flex; align-items:center; justify-content:center;
+      background:var(--cream); border-radius:2px; border:1px solid var(--line);
+    }
+    .mr-card-icon svg{width:64%; height:64%; transition:transform 0.4s ease;}
+    .mr-card:hover .mr-card-icon svg{transform:scale(1.06) translateY(-2px);}
+    .mr-card-index{font-size:11px; font-weight:700; letter-spacing:0.1em; color:var(--ink-soft);}
+    .mr-card-name{font-family:var(--display); font-size:26px; letter-spacing:0.01em; line-height:1;}
+    .mr-card-note{font-size:13px; color:var(--ink-soft); line-height:1.5;}
+
+    /* ---- about ---- */
+    .mr-about{
+      background:var(--ink); color:var(--cream); padding:130px 0; position:relative; overflow:hidden;
+    }
+    .mr-about-num{
+      position:absolute; right:-4vw; top:50%; transform:translateY(-50%);
+      font-family:var(--display); font-size:min(46vw,520px); line-height:1; color:rgba(236,229,216,0.045);
+      user-select:none; pointer-events:none;
+    }
+    .mr-about-grid{
+      display:grid; grid-template-columns:1.3fr 0.9fr; gap:60px; align-items:start; position:relative; z-index:1;
+    }
+    .mr-about-quote{
+      font-family:var(--display); font-weight:400; text-transform:uppercase; letter-spacing:0.005em;
+      font-size:clamp(30px,4vw,52px); line-height:1.08; margin:0;
+    }
+    .mr-about-quote em{font-style:normal; color:var(--accent-soft);}
+    .mr-about-side{display:flex; flex-direction:column; gap:28px; padding-top:10px;}
+    .mr-about-row{display:flex; gap:16px; align-items:flex-start; padding-top:20px; border-top:1px solid rgba(236,229,216,0.16);}
+    .mr-about-row .mr-eyebrow{color:var(--accent-soft); min-width:96px;}
+    .mr-about-row p{margin:0; font-size:14px; color:rgba(236,229,216,0.78); line-height:1.6;}
+
+    /* ---- cta ---- */
+    .mr-cta{padding:130px 0 120px; text-align:center;}
+    .mr-cta-inner{display:flex; flex-direction:column; align-items:center; gap:26px;}
+    .mr-cta .mr-h2{max-width:14ch;}
+    .mr-cta-actions{display:flex; gap:20px; align-items:center; margin-top:8px; flex-wrap:wrap; justify-content:center;}
+
+    /* ---- footer ---- */
+    .mr-footer{border-top:1px solid var(--line); padding:52px 0 40px;}
+    .mr-footer-top{
+      display:flex; justify-content:space-between; align-items:flex-start; gap:40px; flex-wrap:wrap;
+      padding-bottom:36px; margin-bottom:28px; border-bottom:1px solid var(--line);
+    }
+    .mr-footer-brand{display:flex; flex-direction:column; gap:12px;}
+    .mr-footer-links{display:flex; gap:48px; flex-wrap:wrap;}
+    .mr-footer-col{display:flex; flex-direction:column; gap:10px;}
+    .mr-footer-col .mr-eyebrow{margin-bottom:4px; color:var(--ink);}
+    .mr-footer-col a{font-size:13px; color:var(--ink-soft); font-weight:500;}
+    .mr-footer-bottom{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;}
+    .mr-footer-bottom span{font-size:12px; color:var(--ink-soft);}
+
+    @media (max-width: 900px){
+      .mr-container{padding:0 24px;}
+      .mr-hero{padding:40px 24px 30px;}
+      .mr-hero-grid{grid-template-columns:1fr; gap:52px; text-align:left;}
+      .mr-hero-visual{order:-1; max-width:320px; margin:0 auto;}
+      .mr-nav{padding:18px 24px;}
+      .mr-nav-links{display:none;}
+      .mr-menu-btn{display:flex;}
+      .mr-nav .mr-mobile-menu{display:flex; margin:0 -24px; padding-left:24px; padding-right:24px;}
+      .mr-showcase{padding:90px 0 70px;}
+      .mr-showcase-head{grid-template-columns:1fr; gap:20px;}
+      .mr-grid{grid-template-columns:repeat(2,1fr); gap:16px;}
+      .mr-about{padding:90px 0;}
+      .mr-about-grid{grid-template-columns:1fr; gap:36px;}
+      .mr-cta{padding:90px 0 80px;}
+      .mr-footer-top{gap:28px;}
+    }
+    @media (max-width: 520px){
+      .mr-grid{grid-template-columns:1fr;}
+      .mr-card-icon{aspect-ratio:16/10;}
+    }
+  </style>
+</helmet>
+
+<div class="mr-page" data-motion="{{motionState}}">
+  <div class="mr-grain"></div>
+
+  <div class="mr-promo-bar" id="mrTop">
+    <div class="mr-promo-track">
+      <span><i></i>Buy 2, Get 50% Off<i></i>For a Limited Time Only<i></i>Shop the Winter Collection<i></i>Buy 2, Get 50% Off<i></i>For a Limited Time Only<i></i>Shop the Winter Collection</span>
+      <span aria-hidden="true"><i></i>Buy 2, Get 50% Off<i></i>For a Limited Time Only<i></i>Shop the Winter Collection<i></i>Buy 2, Get 50% Off<i></i>For a Limited Time Only<i></i>Shop the Winter Collection</span>
+    </div>
+  </div>
+
+  <nav class="mr-nav" id="mrNav">
+    <div class="mr-wordmark"><span class="mr-wordmark-dot"></span>MERRIER</div>
+    <div class="mr-nav-links">
+      <a href="#collection">Collection</a>
+      <a href="#about">The Brand</a>
+      <a href="https://instagram.com/merriereg" target="_blank" rel="noopener">Contact</a>
+      <a class="mr-nav-cta" href="https://instagram.com/merriereg" target="_blank" rel="noopener">@merriereg</a>
+    </div>
+    <button class="mr-menu-btn" id="mrMenuBtn" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="mr-mobile-menu" id="mrMobileMenu">
+      <a href="#mrTop">Home</a>
+      <a href="#collection">Products</a>
+      <a href="#about">The Brand</a>
+      <a href="https://instagram.com/merriereg" target="_blank" rel="noopener">Contact</a>
+    </div>
+  </nav>
+
+  <section class="mr-hero">
+    <div class="mr-hero-grid">
+      <div class="mr-hero-copy reveal" data-reveal>
+        <div class="mr-hero-tagbar">
+          <span class="mr-eyebrow">Est. 2024 &middot; Essentials-First Streetwear</span>
+        </div>
+        <h1 class="mr-h1 mr-hero-title" id="mrHeroTitle">
+          <span class="mr-line-mask"><span class="mr-line" style="transition-delay:0.05s">Choose</span></span>
+          <span class="mr-line-mask"><span class="mr-line" style="transition-delay:0.16s">Your</span></span>
+          <span class="mr-line-mask"><span class="mr-line" style="transition-delay:0.27s">Merrier</span></span>
+        </h1>
+        <p class="mr-lede">Elevated essentials and statement silhouettes, built for the everyday and the extraordinary. This winter, MERRIER begins a new era.</p>
+        <div class="mr-hero-actions">
+          <a class="mr-btn-primary" href="#collection">View the Collection &rarr;</a>
+          <a class="mr-btn-ghost" href="https://instagram.com/merriereg" target="_blank" rel="noopener">Follow @merriereg</a>
+        </div>
+      </div>
+      <div class="mr-hero-visual">
+        <div class="mr-hero-visual-inner" id="mrHeroVisualInner">
+          <svg class="mr-dotmark" viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">
+            <g class="mr-dotmark-rings">
+              <sc-for list="{{dots}}" as="dot" hint-placeholder-count="420">
+                <circle class="mr-dot" cx="{{dot.x}}" cy="{{dot.y}}" r="{{dot.size}}" fill="{{accent}}"
+                  style="--o:{{dot.opacity}}; opacity:{{dot.opacity}}; animation-delay:{{dot.delay}}s;"></circle>
+              </sc-for>
+            </g>
+            <circle class="mr-dotmark-core" cx="250" cy="250" r="46" fill="{{accent}}"></circle>
+          </svg>
+          <div class="mr-dotmark-label">
+            <div class="mr-wordmark"><span class="mr-wordmark-dot"></span>MERRIER</div>
+            <span class="mr-estd">ESTD 2024</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mr-scrollcue"><span>SCROLL</span><div class="mr-scrollcue-line"></div></div>
+  </section>
+
+  <div class="mr-marquee">
+    <div class="mr-marquee-track">
+      <span><i></i>Winter Collection<i></i>The New Era<i></i>Coming This Winter<i></i>Choose Your Merrier<i></i>Winter Collection<i></i>The New Era<i></i>Coming This Winter<i></i>Choose Your Merrier</span>
+      <span aria-hidden="true"><i></i>Winter Collection<i></i>The New Era<i></i>Coming This Winter<i></i>Choose Your Merrier<i></i>Winter Collection<i></i>The New Era<i></i>Coming This Winter<i></i>Choose Your Merrier</span>
+    </div>
+  </div>
+
+  <section class="mr-showcase" id="collection">
+    <div class="mr-container">
+      <div class="mr-showcase-head">
+        <div class="reveal" data-reveal>
+          <span class="mr-badge"><i></i>Coming This Winter</span>
+          <h2 class="mr-h2" style="margin-top:18px;">The New Era</h2>
+        </div>
+        <p class="mr-lede reveal" data-reveal style="padding-bottom:6px;">A new chapter of elevated essentials and statement silhouettes — four pieces that open the MERRIER winter lineup.</p>
+      </div>
+
+      <div class="mr-grid">
+        <div class="mr-card reveal" data-reveal>
+          <div class="mr-card-icon">
+            <svg viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="{{ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M46 18 L34 30 L20 26 L14 40 L26 46 L26 122 L94 122 L94 46 L106 40 L100 26 L86 30 L74 18 Z"/>
+              <path d="M46 18 C46 30 74 30 74 18"/>
+              <path d="M60 34 L60 116"/>
+              <path d="M52 34 L52 44"/>
+              <path d="M68 34 L68 44"/>
+              <rect x="40" y="54" width="16" height="18" rx="1.5"/>
+            </svg>
+          </div>
+          <div>
+            <div class="mr-card-index">01 &middot; Outerwear</div>
+            <div class="mr-card-name">Denim Overshirt</div>
+          </div>
+          <p class="mr-card-note">Washed indigo, boxy fit, chest pocket — the layer that opens every look.</p>
+        </div>
+
+        <div class="mr-card reveal" data-reveal>
+          <div class="mr-card-icon">
+            <svg viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="{{ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M40 30 C40 16 80 16 80 30 L96 44 L88 58 L80 50 L80 122 L40 122 L40 50 L32 58 L24 44 Z"/>
+              <path d="M40 30 C48 40 72 40 80 30"/>
+              <path d="M50 30 L46 20"/>
+              <path d="M70 30 L74 20"/>
+              <path d="M50 82 L70 82 L70 100 L50 100 Z"/>
+            </svg>
+          </div>
+          <div>
+            <div class="mr-card-index">02 &middot; Signature</div>
+            <div class="mr-card-name">The Merrier Hoodie</div>
+          </div>
+          <p class="mr-card-note">Heavyweight fleece, kangaroo pocket, "Choose Your Merrier" across the chest.</p>
+        </div>
+
+        <div class="mr-card reveal" data-reveal>
+          <div class="mr-card-icon">
+            <svg viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="{{ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M32 18 L88 18 L92 34 L100 122 L68 122 L60 60 L52 122 L20 122 L28 34 Z"/>
+              <path d="M32 18 L28 34 L92 34 L88 18"/>
+              <path d="M42 24 L42 30 M50 22 L50 29 M58 21 L58 28 M70 21 L70 28 M78 22 L78 29"/>
+            </svg>
+          </div>
+          <div>
+            <div class="mr-card-index">03 &middot; Denim</div>
+            <div class="mr-card-name">Wide-Leg Jeans</div>
+          </div>
+          <p class="mr-card-note">Light wash, relaxed through the leg, built for a straight, statement drop.</p>
+        </div>
+
+        <div class="mr-card reveal" data-reveal>
+          <div class="mr-card-icon">
+            <svg viewBox="0 0 120 140" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="{{ink}}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M30 20 L90 20 L94 34 L102 120 L74 120 L62 56 L58 120 L30 120 L18 34 Z"/>
+              <path d="M30 20 C48 26 72 26 90 20"/>
+              <path d="M50 20 C50 26 70 26 70 20"/>
+              <path d="M72 108 L98 108 M22 108 L48 108"/>
+            </svg>
+          </div>
+          <div>
+            <div class="mr-card-index">04 &middot; Comfort</div>
+            <div class="mr-card-name">Fleece Sweatpants</div>
+          </div>
+          <p class="mr-card-note">Tapered leg, ribbed cuffs, drawcord waist — the everyday essential.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mr-about" id="about">
+    <div class="mr-about-num">24</div>
+    <div class="mr-container mr-about-grid">
+      <p class="mr-h2 mr-about-quote reveal" data-reveal>Merrier is built for those who dress with <em>intention</em> — essentials with an edge, made for the everyday and the extraordinary.</p>
+      <div class="mr-about-side reveal" data-reveal>
+        <div class="mr-about-row">
+          <span class="mr-eyebrow">Founded</span>
+          <p>Started in 2024 as a small drop-based label — every piece designed around a single idea: choose your Merrier.</p>
+        </div>
+        <div class="mr-about-row">
+          <span class="mr-eyebrow">Approach</span>
+          <p>Essentials-first. Fewer pieces, made with weight, cut and fabric that hold up to daily rotation.</p>
+        </div>
+        <div class="mr-about-row">
+          <span class="mr-eyebrow">Now</span>
+          <p>The New Era — MERRIER's first full winter collection — opens this season.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mr-cta">
+    <div class="mr-container mr-cta-inner">
+      <span class="mr-badge reveal" data-reveal><i></i>Stay Tuned</span>
+      <h2 class="mr-h2 reveal" data-reveal>Be first to the drop.</h2>
+      <p class="mr-lede reveal" data-reveal style="text-align:center;">The New Era launches this winter. Follow along for release dates, restocks and behind-the-scenes.</p>
+      <div class="mr-cta-actions reveal" data-reveal>
+        <a class="mr-btn-primary" href="https://instagram.com/merriereg" target="_blank" rel="noopener">Follow @merriereg &rarr;</a>
+      </div>
+    </div>
+  </section>
+
+  <footer class="mr-footer">
+    <div class="mr-container">
+      <div class="mr-footer-top">
+        <div class="mr-footer-brand">
+          <div class="mr-wordmark"><span class="mr-wordmark-dot"></span>MERRIER</div>
+          <p class="mr-lede" style="font-size:13px; max-width:32ch;">Elevated essentials and statement silhouettes. Est. 2024.</p>
+        </div>
+        <div class="mr-footer-links">
+          <div class="mr-footer-col">
+            <span class="mr-eyebrow">Shop</span>
+            <a href="#collection">The New Era</a>
+            <a href="#collection">Winter Collection</a>
+          </div>
+          <div class="mr-footer-col">
+            <span class="mr-eyebrow">Brand</span>
+            <a href="#about">The Brand</a>
+            <a href="https://instagram.com/merriereg" target="_blank" rel="noopener">Instagram</a>
+          </div>
+        </div>
+      </div>
+      <div class="mr-footer-bottom">
+        <span>&copy; 2024 MERRIER. All rights reserved.</span>
+        <span>ESTD 2024</span>
+      </div>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{
+  "accent": {"editor":"color","default":"#D6421D"},
+  "motion": {"editor":"boolean","default":true}
+}'>
+class Component extends DCLogic {
+  buildDots(accent) {
+    const dots = [];
+    const cx = 250, cy = 250;
+    const minR = 62, maxR = 232, ringGap = 13.5;
+    let idx = 0;
+    for (let r = minR; r <= maxR; r += ringGap) {
+      const circumference = 2 * Math.PI * r;
+      const count = Math.max(8, Math.floor(circumference / 11.5));
+      const t = (r - minR) / (maxR - minR);
+      const size = (4.6 - t * 3.1).toFixed(2);
+      const opacity = (1 - t * 0.62).toFixed(2);
+      const stagger = (idx % 2) * (Math.PI / count);
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2 + stagger;
+        const x = (cx + Math.cos(angle) * r).toFixed(2);
+        const y = (cy + Math.sin(angle) * r).toFixed(2);
+        const delay = ((idx * 0.37) % 6).toFixed(2);
+        dots.push({ x, y, size, opacity, delay });
+        idx++;
+      }
+    }
+    return dots;
+  }
+
+  componentDidMount() {
+    const root = this._root || document;
+    const nav = document.getElementById('mrNav');
+    const onScroll = () => {
+      if (!nav) return;
+      if (window.scrollY > 12) nav.classList.add('mr-nav--scrolled');
+      else nav.classList.remove('mr-nav--scrolled');
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    const motion = this.props.motion ?? true;
+    const heroTitle = document.getElementById('mrHeroTitle');
+    const heroVisual = document.getElementById('mrHeroVisualInner');
+    if (!motion) {
+      if (heroTitle) heroTitle.classList.add('mr-hero-title--in');
+      if (heroVisual) heroVisual.classList.add('mr-hero-visual-inner--in');
+    } else {
+      window.setTimeout(() => {
+        if (heroTitle) heroTitle.classList.add('mr-hero-title--in');
+        if (heroVisual) heroVisual.classList.add('mr-hero-visual-inner--in');
+      }, 120);
+
+      if (heroVisual && window.matchMedia('(hover: hover)').matches) {
+        const bounds = () => heroVisual.getBoundingClientRect();
+        window.addEventListener('mousemove', (e) => {
+          const b = bounds();
+          const cx = b.left + b.width / 2;
+          const cy = b.top + b.height / 2;
+          const dx = (e.clientX - cx) / (b.width / 2 || 1);
+          const dy = (e.clientY - cy) / (b.height / 2 || 1);
+          const clampedX = Math.max(-1, Math.min(1, dx));
+          const clampedY = Math.max(-1, Math.min(1, dy));
+          heroVisual.style.transform =
+            `scale(1) rotate(0deg) perspective(900px) rotateX(${(-clampedY * 7).toFixed(2)}deg) rotateY(${(clampedX * 7).toFixed(2)}deg)`;
+        }, { passive: true });
+      }
+    }
+
+    const menuBtn = document.getElementById('mrMenuBtn');
+    const mobileMenu = document.getElementById('mrMobileMenu');
+    if (menuBtn && mobileMenu) {
+      menuBtn.addEventListener('click', () => {
+        const open = mobileMenu.classList.toggle('mr-mobile-menu--open');
+        menuBtn.classList.toggle('mr-menu-btn--open', open);
+        menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      mobileMenu.querySelectorAll('a').forEach((a) => {
+        a.addEventListener('click', () => {
+          mobileMenu.classList.remove('mr-mobile-menu--open');
+          menuBtn.classList.remove('mr-menu-btn--open');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach((a) => {
+      a.addEventListener('click', (e) => {
+        const id = a.getAttribute('href').slice(1);
+        const target = document.getElementById(id);
+        if (target) {
+          e.preventDefault();
+          target.scrollIntoView({ behavior: motion ? 'smooth' : 'auto', block: 'start' });
+        }
+        if (mobileMenu && mobileMenu.classList.contains('mr-mobile-menu--open')) {
+          mobileMenu.classList.remove('mr-mobile-menu--open');
+          menuBtn.classList.remove('mr-menu-btn--open');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+
+    const els = document.querySelectorAll('[data-reveal]');
+    if ('IntersectionObserver' in window) {
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal--visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.15, rootMargin: '0px 0px -60px 0px' });
+      els.forEach((el) => io.observe(el));
+    } else {
+      els.forEach((el) => el.classList.add('reveal--visible'));
+    }
+  }
+
+  renderVals() {
+    const accent = this.props.accent ?? '#D6421D';
+    const motion = this.props.motion ?? true;
+    return {
+      accent,
+      ink: '#1C1712',
+      motionState: motion ? 'on' : 'off',
+      dots: this.buildDots(accent),
+    };
+  }
+}
+</script>
+</body>
+</html>
