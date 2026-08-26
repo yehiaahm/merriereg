@@ -59,11 +59,11 @@ async function main() {
         { url: '/products/beige-acid-washed-oversized-tee/04-sleeve-hem.jpg', altText: 'Beige Acid Washed Oversized T-Shirt — sleeve hem detail', colorValue: 'Beige' },
       ],
       variants: [
-        { size: 'S', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-S', price: 44900, stock: 17 },
-        { size: 'M', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-M', price: 44900, stock: 17 },
-        { size: 'L', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-L', price: 44900, stock: 15 },
-        { size: 'XL', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-XL', price: 44900, stock: 18 },
-        { size: 'XXL', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-XXL', price: 44900, stock: 20 },
+        { size: 'S', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-S', price: 44900, stock: 4 },
+        { size: 'M', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-M', price: 44900, stock: 0 },
+        { size: 'L', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-L', price: 44900, stock: 3 },
+        { size: 'XL', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-XL', price: 44900, stock: 3 },
+        { size: 'XXL', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-XXL', price: 44900, stock: 1 },
       ],
     },
   ];
