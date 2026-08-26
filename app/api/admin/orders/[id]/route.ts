@@ -28,8 +28,9 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   CONFIRMED: ['PROCESSING', 'CANCELLED'],
   PROCESSING: ['SHIPPED', 'CANCELLED'],
   SHIPPED: ['DELIVERED'],
-  DELIVERED: [],
+  DELIVERED: ['RETURNED'],
   CANCELLED: [],
+  RETURNED: [],
 };
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -62,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   }
 
   const updated = await prisma.$transaction(async (tx) => {
-    if (nextStatus === 'CANCELLED') {
+    if (nextStatus === 'CANCELLED' || nextStatus === 'RETURNED') {
       for (const item of order.items) {
         if (item.variantId) {
           await tx.productVariant.update({
@@ -72,6 +73,26 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
       }
     }
+
+    if (nextStatus === 'RETURNED') {
+      return tx.order.update({
+        where: { id },
+        data: {
+          status: nextStatus,
+          paymentStatus: 'REFUNDED',
+          payments: {
+            create: {
+              provider: order.paymentMethod,
+              status: 'REFUNDED',
+              // Negative amount marks this as money paid back out, distinct
+              // from the original positive-amount payment record.
+              amount: -order.total,
+            },
+          },
+        },
+      });
+    }
+
     return tx.order.update({ where: { id }, data: { status: nextStatus } });
   });
 

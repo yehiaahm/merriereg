@@ -28,6 +28,7 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  RETURNED
 }
 
 enum PaymentMethod {
@@ -44,6 +45,7 @@ enum PaymentStatus {
   PAID
   FAILED
   CANCELLED
+  REFUNDED
 }
 
 model Category {

@@ -6,7 +6,7 @@ import type { Prisma } from '@prisma/client';
 export const metadata = { title: 'Admin — Orders' };
 export const dynamic = 'force-dynamic';
 
-const STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+const STATUSES = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED'];
 
 export default async function AdminOrdersPage({
   searchParams,

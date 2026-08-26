@@ -8,8 +8,17 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   CONFIRMED: ['PROCESSING', 'CANCELLED'],
   PROCESSING: ['SHIPPED', 'CANCELLED'],
   SHIPPED: ['DELIVERED'],
-  DELIVERED: [],
+  DELIVERED: ['RETURNED'],
   CANCELLED: [],
+  RETURNED: [],
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  RETURNED: 'Return Order',
+};
+
+const CONFIRM_MESSAGES: Record<string, string> = {
+  RETURNED: 'Return this order? This restocks every item and marks the payment as refunded.',
 };
 
 export function OrderStatusUpdater({ orderId, status }: { orderId: string; status: string }) {
@@ -19,6 +28,10 @@ export function OrderStatusUpdater({ orderId, status }: { orderId: string; statu
   const options = ALLOWED_TRANSITIONS[status] ?? [];
 
   async function updateStatus(next: string) {
+    const confirmMessage = CONFIRM_MESSAGES[next];
+    if (confirmMessage && !window.confirm(confirmMessage)) {
+      return;
+    }
     setBusy(true);
     setError(null);
     const res = await fetch(`/api/admin/orders/${orderId}`, {
@@ -45,12 +58,12 @@ export function OrderStatusUpdater({ orderId, status }: { orderId: string; statu
         {options.map((next) => (
           <button
             key={next}
-            className={next === 'CANCELLED' ? 'btn btn-danger' : 'btn btn-primary'}
+            className={next === 'CANCELLED' || next === 'RETURNED' ? 'btn btn-danger' : 'btn btn-primary'}
             style={{ minHeight: 40, padding: '0 16px' }}
             disabled={busy}
             onClick={() => updateStatus(next)}
           >
-            Mark as {next}
+            {STATUS_LABELS[next] ?? `Mark as ${next}`}
           </button>
         ))}
       </div>

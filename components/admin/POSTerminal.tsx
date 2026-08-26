@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatEGP } from '@/lib/money';
+import { POSReceipt } from './POSReceipt';
 
 type Variant = {
   id: string;
@@ -376,33 +377,21 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
   return (
     <div>
       <style>{`
-        #pos-invoice { position: absolute; left: -9999px; top: 0; width: 480px; }
         @media print {
           body * { visibility: hidden; }
-          #pos-invoice, #pos-invoice * { visibility: visible; }
-          #pos-invoice { position: absolute; left: 0; top: 0; width: 100%; padding: 24px; }
+          #pos-receipt-wrap, #pos-receipt-wrap * { visibility: visible; }
+          #pos-receipt-wrap { position: absolute; left: 0; top: 0; width: 380px; margin: 0 auto; }
         }
       `}</style>
 
-      <div style={{ maxWidth: 480, margin: '60px auto', textAlign: 'center' }}>
+      <div style={{ maxWidth: 480, margin: '60px auto 32px', textAlign: 'center' }}>
         <div style={{ fontSize: 40, marginBottom: 8 }}>&#10003;</div>
         <h1 style={{ fontSize: 26, marginBottom: 4 }}>Sale Completed</h1>
         <p style={{ color: 'var(--ink-soft)', marginBottom: 24 }}>Order #{result.orderNumber}</p>
 
-        <div style={{ border: '1px solid var(--line)', padding: 20, textAlign: 'left', marginBottom: 24 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <span>Total</span>
-            <strong>{formatEGP(result.total)}</strong>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-            <span>Payment Method</span>
-            <strong>{result.paymentMethod === 'POS_CASH' ? 'Cash' : 'Card'}</strong>
-          </div>
-        </div>
-
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <button className="btn btn-primary" onClick={() => window.print()}>
-            Print Invoice
+            Print Receipt
           </button>
           <button className="btn btn-outline" onClick={onNewSale}>
             New Sale
@@ -416,40 +405,9 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
         </div>
       </div>
 
-      {/* Print-only invoice — positioned off-screen normally, shown in place via the @media print rules above */}
-      <div id="pos-invoice">
-        <h1 style={{ fontFamily: 'var(--display)', fontSize: 28 }}>MERRIER</h1>
-        <p>Order #{result.orderNumber}</p>
-        <p>{new Date(result.createdAt).toLocaleString('en-EG')}</p>
-        <p>Customer: {result.customerName}</p>
-        <hr />
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: 'left' }}>Item</th>
-              <th style={{ textAlign: 'right' }}>Qty</th>
-              <th style={{ textAlign: 'right' }}>Price</th>
-              <th style={{ textAlign: 'right' }}>Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.items.map((item, i) => (
-              <tr key={i}>
-                <td>
-                  {item.productName} ({item.variantColor}/{item.variantSize})
-                </td>
-                <td style={{ textAlign: 'right' }}>{item.quantity}</td>
-                <td style={{ textAlign: 'right' }}>{formatEGP(item.unitPrice)}</td>
-                <td style={{ textAlign: 'right' }}>{formatEGP(item.subtotal)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <hr />
-        <p style={{ textAlign: 'right' }}>Subtotal: {formatEGP(result.subtotal)}</p>
-        {result.discount > 0 && <p style={{ textAlign: 'right' }}>Discount: -{formatEGP(result.discount)}</p>}
-        <p style={{ textAlign: 'right', fontWeight: 700, fontSize: 18 }}>Total: {formatEGP(result.total)}</p>
-        <p style={{ textAlign: 'right' }}>Payment: {result.paymentMethod === 'POS_CASH' ? 'Cash' : 'Card'}</p>
+      {/* Visible receipt preview — the same element is isolated for printing via the @media print rules above */}
+      <div id="pos-receipt-wrap" style={{ width: 380, margin: '0 auto 60px', boxShadow: '0 4px 24px rgba(28, 23, 18, 0.18)' }}>
+        <POSReceipt data={result} />
       </div>
     </div>
   );

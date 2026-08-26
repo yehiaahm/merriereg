@@ -123,5 +123,5 @@ export const posSaleSchema = z.object({
 });
 
 export const orderStatusUpdateSchema = z.object({
-  status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']),
+  status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURNED']),
 });
