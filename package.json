@@ -14,7 +14,8 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-catalog": "node scripts/seed-real-catalog.mjs",
     "db:studio": "prisma studio",
-    "admin:promote": "tsx scripts/make-admin.ts"
+    "admin:promote": "tsx scripts/make-admin.ts",
+    "create-admin": "node scripts/create-admin.mjs"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
