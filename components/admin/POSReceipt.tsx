@@ -129,7 +129,6 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
 
   const siteUrl =
     process.env.NEXT_PUBLIC_SITE_URL || 'https://merrier.up.railway.app';
-  const siteLabel = siteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
   useEffect(() => {
     let cancelled = false;
@@ -382,9 +381,6 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
             }}
           >
             Thank You!
-          </p>
-          <p style={{ textAlign: 'center', fontSize: 11, margin: 0 }}>
-            {siteLabel}
           </p>
 
           <CornerSmudge />
