@@ -40,7 +40,7 @@ async function main() {
         { url: '/products/black-acid-washed-oversized-tee/06-sleeve-hem.jpg', altText: 'Black Acid Washed Oversized T-Shirt — sleeve hem detail', colorValue: 'Black' },
       ],
       variants: [
-        { size: 'S', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-ACIDTEE-BLK-S', price: 44900, stock: 15 },
+        { size: 'S', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-ACIDTEE-BLK-S', price: 44900, stock: 6 },
         { size: 'M', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-ACIDTEE-BLK-M', price: 44900, stock: 0 },
         { size: 'L', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-ACIDTEE-BLK-L', price: 44900, stock: 0 },
         { size: 'XL', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-ACIDTEE-BLK-XL', price: 44900, stock: 4 },
