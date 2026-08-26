@@ -1,1 +1,18 @@
 merrier-landing.html
+
+# Node / Next.js
+node_modules/
+.next/
+next-env.d.ts
+npm-debug.log*
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+
+# Local Postgres instance (used for development — see scripts/local-postgres.mjs)
+.local-postgres-data/
+
+# Claude Code local runtime state
+.claude/scheduled_tasks.lock

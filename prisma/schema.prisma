@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // PostgreSQL everywhere — local dev included (via a real local Postgres
+  // instance started by `npm run db:local`, see scripts/local-postgres.mjs)
+  // — deliberately NOT SQLite-in-dev/Postgres-in-prod, so the schema and
+  // migrations that get tested locally are exactly what runs on Railway.
+  provider = "postgresql"
+  // Deliberately NOT named DATABASE_URL: this machine has an unrelated
+  // global DATABASE_URL set (pointing at a different project's Postgres
+  // database), and env vars from the shell silently take precedence over
+  // .env files. A project-specific name makes that collision impossible.
+  url      = env("MERRIER_DATABASE_URL")
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  PAYMOB_CARD
+  // In-person sale via the admin POS (/admin/pos) — payment is received
+  // immediately, unlike COD/PAYMOB_CARD which settle later.
+  POS_CASH
+  POS_CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String    @unique
+  createdAt DateTime  @default(now())
+  products  Product[]
+}
+
+model Product {
+  id            String           @id @default(cuid())
+  name          String
+  slug          String           @unique
+  description   String
+  status        ProductStatus    @default(ACTIVE)
+  categoryId    String?
+  category      Category?        @relation(fields: [categoryId], references: [id])
+  images        ProductImage[]
+  variants      ProductVariant[]
+  wishlistItems WishlistItem[]
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([categoryId])
+  @@index([status])
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url        String
+  altText    String?
+  position   Int      @default(0)
+  colorValue String?
+  createdAt  DateTime @default(now())
+
+  @@index([productId])
+}
+
+model ProductVariant {
+  id                String      @id @default(cuid())
+  productId         String
+  product           Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku               String      @unique
+  size              String
+  color             String
+  colorHex          String?
+  // Prices stored in piastres (1 EGP = 100 piastres) to avoid float rounding errors.
+  price             Int
+  compareAtPrice    Int?
+  stock             Int         @default(0)
+  lowStockThreshold Int         @default(3)
+  active            Boolean     @default(true)
+  cartItems         CartItem[]
+  orderItems        OrderItem[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@unique([productId, size, color])
+  @@index([productId])
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  quantity  Int
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+}
+
+model Wishlist {
+  id        String         @id @default(cuid())
+  items     WishlistItem[]
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([wishlistId, productId])
+  @@index([wishlistId])
+  @@index([productId])
+}
+
+model Customer {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  phone        String?
+  // Grants access to /admin once true. Never settable from signup — only
+  // via the `admin:promote` script (see scripts/make-admin.ts), so becoming
+  // an admin always requires direct database/server access, not a web request.
+  isAdmin      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  orders       Order[]
+}
+
+model Order {
+  id          String        @id @default(cuid())
+  orderNumber String        @unique
+  status      OrderStatus   @default(PENDING)
+
+  // Set when the order was placed while signed in, or matched to an account
+  // afterwards by email/phone (see linkGuestOrders in lib/customer-auth.ts).
+  // Guest checkout never requires an account, so this stays nullable.
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  customerName  String
+  customerPhone String
+  customerEmail String?
+
+  shippingGovernorate String
+  shippingCity        String
+  shippingArea        String
+  shippingStreet      String
+  shippingBuilding    String
+  shippingApartment   String?
+  shippingNotes       String?
+
+  // All monetary fields in piastres.
+  subtotal     Int
+  shippingCost Int
+  discount     Int     @default(0)
+  couponCode   String?
+  total        Int
+
+  paymentMethod PaymentMethod
+  paymentStatus PaymentStatus @default(PENDING)
+
+  // Paymob's own numeric order id, captured when we register the order with
+  // them at checkout time. The webhook's HMAC covers `order.id` (this field)
+  // but NOT `order.merchant_order_id` — so the webhook handler must match on
+  // this, never trust merchant_order_id alone, or a validly-signed webhook
+  // from an attacker's own unrelated transaction could be retargeted at any
+  // order just by editing that unsigned field. See app/api/webhooks/paymob.
+  paymobOrderId Int? @unique
+
+  items    OrderItem[]
+  payments Payment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([paymentStatus])
+  @@index([customerId])
+}
+
+model OrderItem {
+  id        String          @id @default(cuid())
+  orderId   String
+  order     Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  // Snapshot fields captured at purchase time — never recomputed from the
+  // live product/variant, since prices and names can change after purchase.
+  productName String
+  variantSize  String
+  variantColor String
+  sku          String
+  imageUrl     String?
+  unitPrice    Int
+  quantity     Int
+  subtotal     Int
+
+  @@index([orderId])
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  orderId    String
+  order      Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider   PaymentMethod
+  status     PaymentStatus
+  amount     Int
+  reference  String?
+  rawPayload String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([orderId])
+}

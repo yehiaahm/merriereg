@@ -2,10 +2,11 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "merrier-static",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8935"],
-      "port": 8935
+      "name": "merrier-app",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }
