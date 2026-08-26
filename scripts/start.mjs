@@ -7,10 +7,19 @@
 // would fail. This is plain Node (not bash `${PORT:-3000}` syntax) so it
 // also works unchanged in local Windows dev.
 //
-// Invokes Next's CLI entry file directly via `node <entry> start -p <port>`
-// rather than spawning `npx`/`next` through a shell, so no argument
-// escaping/shell-injection surface exists at all.
-import { spawn } from 'node:child_process';
+// Also runs `prisma migrate deploy` here, at start time, rather than in the
+// `build` script — Railway's build step runs in an isolated builder sandbox
+// with no route to Railway's private network (hosts like
+// `postgres.railway.internal`), so a migration there fails with P1001 ("Can't
+// reach database server") even though the database is perfectly reachable
+// once the container is actually deployed and running. This script runs at
+// that point, so migrations can succeed before the server starts accepting
+// traffic.
+//
+// Invokes Next's and Prisma's CLI entry files directly via `node <entry>
+// ...` rather than spawning `npx`/`next`/`prisma` through a shell, so no
+// argument escaping/shell-injection surface exists at all.
+import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { readFileSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -61,6 +70,17 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 const require = createRequire(import.meta.url);
+
+const prismaBin = require.resolve('prisma/build/index.js');
+console.log('Applying database migrations...');
+const migrate = spawnSync(process.execPath, [prismaBin, 'migrate', 'deploy'], {
+  stdio: 'inherit',
+});
+if (migrate.status !== 0) {
+  console.error('Database migration failed — refusing to start the server.');
+  process.exit(migrate.status ?? 1);
+}
+
 const nextBin = require.resolve('next/dist/bin/next');
 const port = process.env.PORT || '3000';
 

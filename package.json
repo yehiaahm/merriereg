@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && next build",
     "start": "node scripts/start.mjs",
     "lint": "eslint .",
     "test:e2e": "tsx scripts/test-e2e.ts",
@@ -24,6 +24,7 @@
   "dependencies": {
     "@prisma/client": "^6.2.1",
     "next": "^16.3.2",
+    "prisma": "^6.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^3.24.1"
@@ -35,7 +36,6 @@
     "embedded-postgres": "^18.4.0-beta.17",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.2",
-    "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }

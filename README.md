@@ -74,11 +74,19 @@ booting successfully and failing cryptically on the first request.
    - `PAYMOB_API_KEY`, `PAYMOB_INTEGRATION_ID`, `PAYMOB_IFRAME_ID`, `PAYMOB_HMAC_SECRET`
      — only once you have a real Paymob account (see below).
    - **Do not set `PORT`** — Railway injects it automatically and the app reads it.
-4. Railway auto-detects Next.js via Nixpacks and runs `npm install`, then
-   `npm run build` (which runs `prisma generate && prisma migrate deploy && next build`),
-   then `npm start` (which itself resolves `PORT` and fails fast if required
-   vars are missing). No extra config needed — no Dockerfile, no
-   `railway.json`.
+4. Railway auto-detects Next.js via Nixpacks/Railpack and runs `npm install`,
+   then `npm run build` (`prisma generate && next build` — no database
+   connection needed here), then `npm start` (`scripts/start.mjs`, which
+   resolves `PORT`, fails fast if required vars are missing, runs
+   `prisma migrate deploy`, and only then starts the server). No extra config
+   needed — no Dockerfile, no `railway.json`.
+
+   Migrations deliberately run in `start`, not `build`: Railway's build step
+   runs in an isolated builder sandbox with no route to Railway's private
+   network (hosts like `postgres.railway.internal`), so `prisma migrate
+   deploy` there fails with `P1001: Can't reach database server` even though
+   the same database is perfectly reachable once the container is actually
+   deployed and running.
 5. Once deployed, point Railway's health check at `GET /health` if you want
    Railway to actively monitor DB connectivity (Settings → Healthcheck Path).
 6. After the first deploy, either run the seed script once against
@@ -88,9 +96,10 @@ booting successfully and failing cryptically on the first request.
    `MERRIER_DATABASE_URL=<railway-postgres-url> npm run admin:promote -- you@example.com`
    from your machine.
 
-This exact sequence — fresh Postgres → `prisma migrate deploy` → `next build` →
-`npm start` on a Railway-style `PORT` — was tested end-to-end locally against
-a real (not mocked) PostgreSQL instance before this was written.
+This exact sequence — fresh Postgres → `next build` → `npm start` (which runs
+`prisma migrate deploy` then starts the server) on a Railway-style `PORT` —
+was tested end-to-end locally against a real (not mocked) PostgreSQL
+instance before this was written.
 
 ## Enabling Paymob (online card + Apple Pay)
 
