@@ -19,6 +19,9 @@ enum ProductStatus {
   ACTIVE
   DRAFT
   ARCHIVED
+  // Sellable at the POS terminal but excluded from every storefront query —
+  // for in-store-only stock that shouldn't show up on the website.
+  POS_ONLY
 }
 
 enum OrderStatus {

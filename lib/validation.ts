@@ -91,7 +91,7 @@ export const productInputSchema = z.object({
     .max(160)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Slug must be lowercase letters, numbers and hyphens'),
   description: z.string().trim().min(1),
-  status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED']),
+  status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED', 'POS_ONLY']),
   categoryId: z.string().optional().nullable(),
   newCategoryName: z.string().trim().max(80).optional(),
   images: z

@@ -1,11 +1,11 @@
-import { listActiveProducts } from '@/lib/products';
+import { listSellableProducts } from '@/lib/products';
 import { POSTerminal } from '@/components/admin/POSTerminal';
 
 export const metadata = { title: 'Point of Sale' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPOSPage() {
-  const products = await listActiveProducts();
+  const products = await listSellableProducts();
 
   const posProducts = products
     .filter((p) => p.variants.some((v) => v.active))

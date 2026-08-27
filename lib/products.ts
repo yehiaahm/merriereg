@@ -16,6 +16,16 @@ export async function listActiveProducts(options: { categorySlug?: string } = {}
   });
 }
 
+// Everything sellable at the POS terminal: storefront-visible products plus
+// POS_ONLY ones that are deliberately kept off the website.
+export async function listSellableProducts() {
+  return prisma.product.findMany({
+    where: { status: { in: ['ACTIVE', 'POS_ONLY'] } },
+    include: productCardInclude,
+    orderBy: { createdAt: 'desc' },
+  });
+}
+
 export async function getProductBySlug(slug: string) {
   return prisma.product.findUnique({
     where: { slug },

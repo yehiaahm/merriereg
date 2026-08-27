@@ -24,7 +24,7 @@ type ProductFormValue = {
   name: string;
   slug: string;
   description: string;
-  status: 'ACTIVE' | 'DRAFT' | 'ARCHIVED';
+  status: 'ACTIVE' | 'DRAFT' | 'ARCHIVED' | 'POS_ONLY';
   categoryId?: string | null;
   images: ImageForm[];
   variants: VariantForm[];
@@ -170,6 +170,7 @@ export function ProductForm({
             <select id="status" value={status} onChange={(e) => setStatus(e.target.value as ProductFormValue['status'])}>
               <option value="DRAFT">Draft (hidden)</option>
               <option value="ACTIVE">Active (visible in store)</option>
+              <option value="POS_ONLY">POS Only (sellable in-store, hidden from website)</option>
               <option value="ARCHIVED">Archived</option>
             </select>
           </div>
