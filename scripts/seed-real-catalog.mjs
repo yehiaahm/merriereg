@@ -1,4 +1,4 @@
-// Seeds the real MERRIER launch catalog (2 Acid Washed Oversized Tees) —
+// Seeds the real MERRIER launch catalog (3 Acid Washed Oversized Tees) —
 // distinct from prisma/seed.ts, which only creates placeholder demo
 // products with picsum.photos stock images. This script's images point at
 // the real product photos already committed under public/products/, so it
@@ -64,6 +64,25 @@ async function main() {
         { size: 'L', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-L', price: 44900, stock: 3 },
         { size: 'XL', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-XL', price: 44900, stock: 3 },
         { size: 'XXL', color: 'Beige', colorHex: '#a3865f', sku: 'MR-ACIDTEE-BEI-XXL', price: 44900, stock: 1 },
+      ],
+    },
+    {
+      name: 'Olive Acid Washed Oversized T-Shirt',
+      slug: 'olive-acid-washed-oversized-tee',
+      description:
+        'Acid washed, heavyweight cotton, boxy oversized fit with a raw distressed neckline. "You Choose A Right Merries" woven neck tag.',
+      images: [
+        { url: '/products/olive-acid-washed-oversized-tee/01-neck-seam.png', altText: 'Olive Acid Washed Oversized T-Shirt — neck seam detail', colorValue: 'Olive' },
+        { url: '/products/olive-acid-washed-oversized-tee/02-hem-overlock.png', altText: 'Olive Acid Washed Oversized T-Shirt — hem overlock stitch', colorValue: 'Olive' },
+        { url: '/products/olive-acid-washed-oversized-tee/03-sleeve-hem.png', altText: 'Olive Acid Washed Oversized T-Shirt — sleeve hem detail', colorValue: 'Olive' },
+        { url: '/products/olive-acid-washed-oversized-tee/04-tag-collar.png', altText: 'Olive Acid Washed Oversized T-Shirt — neck tag, collar', colorValue: 'Olive' },
+      ],
+      variants: [
+        { size: 'S', color: 'Olive', colorHex: '#5b6350', sku: 'MR-ACIDTEE-OLV-S', price: 44900, stock: 3 },
+        { size: 'M', color: 'Olive', colorHex: '#5b6350', sku: 'MR-ACIDTEE-OLV-M', price: 44900, stock: 0 },
+        { size: 'L', color: 'Olive', colorHex: '#5b6350', sku: 'MR-ACIDTEE-OLV-L', price: 44900, stock: 4 },
+        { size: 'XL', color: 'Olive', colorHex: '#5b6350', sku: 'MR-ACIDTEE-OLV-XL', price: 44900, stock: 3 },
+        { size: 'XXL', color: 'Olive', colorHex: '#5b6350', sku: 'MR-ACIDTEE-OLV-XXL', price: 44900, stock: 0 },
       ],
     },
   ];
