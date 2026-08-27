@@ -377,10 +377,38 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
   return (
     <div>
       <style>{`
+        #pos-receipt-wrap {
+          width: 380px;
+          margin: 0 auto 60px;
+          box-shadow: 0 4px 24px rgba(28, 23, 18, 0.18);
+        }
+
         @media print {
+          /* 80mm thermal roll, no fixed page height so the receipt prints its
+             own natural length instead of being laid out on an A4/Letter page. */
+          @page { size: 80mm auto; margin: 0; }
+
+          html, body { margin: 0; padding: 0; }
+
+          /* The admin shell forces min-height: 100vh for the on-screen layout;
+             left alone it still occupies that height while hidden below,
+             which is what inflates the print output to a full-size blank page. */
+          #admin-shell { min-height: 0 !important; }
+
           body * { visibility: hidden; }
           #pos-receipt-wrap, #pos-receipt-wrap * { visibility: visible; }
-          #pos-receipt-wrap { position: absolute; left: 0; top: 0; width: 380px; margin: 0 auto; }
+
+          #pos-receipt-wrap {
+            position: absolute;
+            top: 0;
+            left: 0;
+            margin: 0;
+            box-shadow: none;
+            /* The receipt is designed at a 380px canvas width (~100.6mm at 96dpi);
+               zoom scales the whole design — fonts, padding, gaps included — down
+               to fit the real 80mm paper width without any content re-wrapping. */
+            zoom: 0.7957;
+          }
         }
       `}</style>
 
@@ -406,7 +434,7 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
       </div>
 
       {/* Visible receipt preview — the same element is isolated for printing via the @media print rules above */}
-      <div id="pos-receipt-wrap" style={{ width: 380, margin: '0 auto 60px', boxShadow: '0 4px 24px rgba(28, 23, 18, 0.18)' }}>
+      <div id="pos-receipt-wrap">
         <POSReceipt data={result} />
       </div>
     </div>

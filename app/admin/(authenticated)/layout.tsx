@@ -3,7 +3,7 @@ import { AccountLogoutButton } from '@/components/AccountLogoutButton';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ minHeight: '100vh', background: '#fff' }}>
+    <div id="admin-shell" style={{ minHeight: '100vh', background: '#fff' }}>
       <div
         style={{
           display: 'flex',
