@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import QRCode from 'qrcode';
-
 type ReceiptItem = {
   productName: string;
   variantSize: string;
@@ -127,30 +124,6 @@ function CornerSmudge() {
 }
 
 export function POSReceipt({ data }: { data: ReceiptData }) {
-  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
-
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || 'https://merrier.up.railway.app';
-
-  useEffect(() => {
-    let cancelled = false;
-    QRCode.toDataURL(siteUrl, {
-      margin: 1,
-      // Rendered at a much larger source resolution than its 130px display
-      // size (both on screen and in print) so it rasterizes crisply at
-      // thermal-printer DPI (~200–300) instead of the 96dpi screen assumes.
-      width: 320,
-      color: { dark: '#1c1712', light: '#ece5d8' },
-    })
-      .then((url) => {
-        if (!cancelled) setQrDataUrl(url);
-      })
-      .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [siteUrl]);
-
   const date = new Date(data.createdAt);
   const dateLabel = date.toLocaleDateString('en-GB', {
     day: '2-digit',
@@ -358,17 +331,19 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
               margin: '4px 0 6px',
             }}
           >
-            {qrDataUrl ? (
-              /* eslint-disable-next-line @next/next/no-img-element -- data: URI generated client-side, next/image can't optimize it */
-              <img
-                src={qrDataUrl}
-                alt="QR code linking to the Merrier website"
-                width={130}
-                height={130}
-              />
-            ) : (
-              <div style={{ width: 130, height: 130 }} />
-            )}
+            {/* Static file (not generated from NEXT_PUBLIC_SITE_URL) — that
+                env var is inlined into the JS bundle at build time, so if
+                it's ever missing/wrong in the Railway build step the QR
+                would silently keep encoding a stale/wrong URL forever
+                regardless of the runtime environment. A fixed, known-good
+                image sidesteps that entirely. */}
+            {/* eslint-disable-next-line @next/next/no-img-element -- plain static asset, doesn't need next/image's optimization pipeline */}
+            <img
+              src="/receipt/qr-code.png"
+              alt="QR code linking to the Merrier website"
+              width={130}
+              height={130}
+            />
           </div>
           <p
             style={{
