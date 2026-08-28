@@ -39,9 +39,8 @@ function itemLabel(item: ReceiptItem): string {
 
 // Dense halftone spiral: concentric rings of dots that shrink, spread out and
 // fade toward the rim, with each ring rotated slightly against the last so the
-// overlap reads as a swirl. Screen only — a halftone dot field is precisely
-// what a 1-bit thermal head renders as a gray smudge, so print hides it (see
-// the .receipt-logo print rule).
+// overlap reads as a swirl. Screen only — at this density the dots are far
+// under a thermal head's resolution, so print swaps in LogoMarkPrint below.
 function LogoMark({ size = 84 }: { size?: number }) {
   const rings = 26;
   const center = 60;
@@ -75,6 +74,54 @@ function LogoMark({ size = 84 }: { size?: number }) {
       <circle cx={center} cy={center} r="9" fill="var(--accent)" />
       {dots.map((d, i) => (
         <circle key={i} cx={d.cx} cy={d.cy} r={d.r} fill="var(--accent)" opacity={d.opacity} />
+      ))}
+    </svg>
+  );
+}
+
+// The same sunburst, redrawn to the tolerances of an 80mm thermal head. That
+// head is a row of ~203dpi elements that are either on or off: it can't hold a
+// dot smaller than about 0.3mm, can't render a partial-opacity dot as anything
+// but noise, and can't keep a gap narrower than a few head dots from closing
+// up. LogoMark's screen version breaks all three at once — sub-0.3mm dots at
+// fading opacity, packed tight — which is why it came off the printer as the
+// gray blob above MERRIER.
+//
+// So this variant: no opacity ramp (every dot solid black), far fewer rings,
+// and dots sized and spaced in units that survive the conversion. Rendered at
+// 20mm (see the .receipt-logo-print rule), one viewBox unit is 1/6 mm, so the
+// dots below are 0.58-0.83mm across with ~0.5mm of clear paper between them —
+// roughly 4-7 head dots of ink against 4 of gap. It reads as a coarser mark
+// than the screen one; a fine halftone simply isn't a thing this printer can
+// reproduce.
+function LogoMarkPrint() {
+  const center = 60;
+  const rings = 6;
+  const dots: { cx: number; cy: number; r: number }[] = [];
+
+  for (let ring = 0; ring < rings; ring++) {
+    const radius = 15 + ring * 7.6;
+    const dotRadius = 2.5 - ring * 0.15;
+    const count = Math.max(6, Math.round((2 * Math.PI * radius) / 8));
+    // Same trick as the screen mark: rotate each ring against the last so the
+    // rings read as radiating arms rather than flat concentric circles.
+    const offset = ring * 0.42;
+
+    for (let i = 0; i < count; i++) {
+      const angle = offset + (i / count) * Math.PI * 2;
+      dots.push({
+        cx: Math.round((center + Math.cos(angle) * radius) * 100) / 100,
+        cy: Math.round((center + Math.sin(angle) * radius) * 100) / 100,
+        r: Math.round(dotRadius * 100) / 100,
+      });
+    }
+  }
+
+  return (
+    <svg viewBox="0 0 120 120" role="presentation">
+      <circle cx={center} cy={center} r="7.5" fill="#000" />
+      {dots.map((d, i) => (
+        <circle key={i} cx={d.cx} cy={d.cy} r={d.r} fill="#000" />
       ))}
     </svg>
   );
@@ -165,11 +212,17 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
             <span style={{ whiteSpace: 'nowrap' }}>No. {data.orderNumber}</span>
           </div>
 
+          {/* Two renderings of one mark: the fine halftone for screen, a
+              coarser solid-black one for the thermal head. Each hides the
+              other (see the .receipt-logo-* rules). */}
           <div
-            className="receipt-logo"
+            className="receipt-logo-screen"
             style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 6px' }}
           >
             <LogoMark />
+          </div>
+          <div className="receipt-logo-print" aria-hidden>
+            <LogoMarkPrint />
           </div>
 
           <h1

@@ -391,6 +391,9 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
            already ends the receipt, so the spacer would just add dead cream. */
         .receipt-feed { display: none; }
 
+        /* The coarse thermal rendering of the logo; screen uses the fine one. */
+        .receipt-logo-print { display: none; }
+
         @media print {
           /* 80mm thermal roll, no fixed page height so the receipt prints its
              own natural length instead of being laid out on an A4/Letter page. */
@@ -469,11 +472,23 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
             padding: 6px 2mm 0 !important;
           }
 
-          /* The logo mark is a halftone dot field — the one thing a 1-bit
-             thermal head is guaranteed to dither into noise (it printed as
-             the gray blob above MERRIER on the physical receipt). The
-             wordmark carries the branding on paper instead. */
-          .receipt-logo { display: none !important; }
+          /* Swap the fine halftone mark for the coarse solid-black one built
+             for a 203dpi thermal head (see LogoMarkPrint). The screen version
+             printed as the gray blob above MERRIER on the physical receipt:
+             its dots are under 0.3mm and carry a fading opacity, and a head
+             that can only burn a dot or not burn it turns both into noise.
+             20mm keeps every dot in that mark comfortably above the head's
+             minimum. */
+          .receipt-logo-screen { display: none !important; }
+          .receipt-logo-print {
+            display: flex !important;
+            justify-content: center;
+            margin: 3px 0 4px !important;
+          }
+          .receipt-logo-print svg {
+            width: 20mm;
+            height: 20mm;
+          }
 
           /* On screen the rules are a repeating-gradient background so the
              dashes can be long; backgrounds only print when the browser's
