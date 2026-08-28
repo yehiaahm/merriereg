@@ -411,9 +411,18 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
                text effectively ~9.5px and introduced fractional-scaling
                blur, which is why printed text came out tiny and faint.
                Sizing directly in mm keeps every font-size at its true,
-               readable pixel value. */
-            width: 80mm;
-            margin: 0;
+               readable pixel value.
+
+               The roll itself is 80mm, but most 80mm thermal printers
+               can't actually mark all 80mm — their real printable head
+               width is a few mm narrower. With margin:0 and content sized
+               to the full 80mm, that unprintable strip ate into the right
+               column (TOTAL/prices got sliced off, as seen on a physical
+               receipt). Sizing content to 72mm and centering it on the
+               80mm page leaves a safety margin on both edges so nothing
+               printable falls outside the head's actual range. */
+            width: 72mm;
+            margin: 0 4mm;
             box-shadow: none;
           }
 
