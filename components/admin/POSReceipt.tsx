@@ -20,76 +20,84 @@ export type ReceiptData = {
   items: ReceiptItem[];
 };
 
+// Column widths for the ITEM / QTY / PRICE / TOTAL table. Shared between the
+// header row and every line item so the columns line up exactly.
+const COL_QTY = 36;
+const COL_PRICE = 60;
+const COL_TOTAL = 66;
+
 function formatLE(piastres: number): string {
   const egp = piastres / 100;
   const formatted = egp % 1 === 0 ? egp.toFixed(0) : egp.toFixed(2);
   return `${formatted} LE`;
 }
 
-// Concentric rings of dots, shrinking in size toward the edge, approximating the
-// halftone-circle logo mark from the reference receipt design.
-function LogoDots() {
-  const rings = 9;
+function itemLabel(item: ReceiptItem): string {
+  const variant = [item.variantColor, item.variantSize].filter(Boolean).join(' ');
+  return variant ? `${item.productName} - ${variant}` : item.productName;
+}
+
+// Dense halftone spiral: concentric rings of dots that shrink, spread out and
+// fade toward the rim, with each ring rotated slightly against the last so the
+// overlap reads as a swirl. Screen only — a halftone dot field is precisely
+// what a 1-bit thermal head renders as a gray smudge, so print hides it (see
+// the .receipt-logo print rule).
+function LogoMark({ size = 84 }: { size?: number }) {
+  const rings = 26;
   const center = 60;
+  const maxRadius = 56;
   const dots: { cx: number; cy: number; r: number; opacity: number }[] = [];
-  for (let ring = 0; ring < rings; ring++) {
-    const radius = (ring / (rings - 1)) * 52;
-    const dotCount = Math.max(6, Math.round(radius * 0.9));
-    const dotRadius = Math.max(0.6, 2.4 - ring * 0.22);
-    const opacity = ring === 0 ? 1 : Math.max(0.15, 1 - ring * 0.1);
-    if (radius === 0) {
-      dots.push({ cx: center, cy: center, r: dotRadius, opacity });
-      continue;
-    }
-    for (let i = 0; i < dotCount; i++) {
-      const angle = (i / dotCount) * Math.PI * 2;
+
+  for (let ring = 1; ring <= rings; ring++) {
+    const t = ring / rings;
+    const radius = Math.pow(t, 0.92) * maxRadius;
+    const dotRadius = 1.9 - t * 1.35;
+    const spacing = 3 + t * 2.7;
+    const count = Math.max(6, Math.round((2 * Math.PI * radius) / spacing));
+    // Rotating each ring by a constant increment is what produces the spiral
+    // arms; an un-rotated stack of rings reads as flat concentric circles.
+    const offset = ring * 0.55;
+    const opacity = t < 0.55 ? 1 : Math.max(0.22, 1 - (t - 0.55) * 1.75);
+
+    for (let i = 0; i < count; i++) {
+      const angle = offset + (i / count) * Math.PI * 2;
       dots.push({
         cx: Math.round((center + Math.cos(angle) * radius) * 100) / 100,
         cy: Math.round((center + Math.sin(angle) * radius) * 100) / 100,
-        r: dotRadius,
-        opacity,
+        r: Math.round(dotRadius * 100) / 100,
+        opacity: Math.round(opacity * 100) / 100,
       });
     }
   }
+
   return (
-    <svg viewBox="0 0 120 120" width="90" height="90" role="presentation">
-      <circle cx={center} cy={center} r="18" fill="var(--accent)" />
+    <svg viewBox="0 0 120 120" width={size} height={size} role="presentation">
+      <circle cx={center} cy={center} r="9" fill="var(--accent)" />
       {dots.map((d, i) => (
-        <circle
-          key={i}
-          cx={d.cx}
-          cy={d.cy}
-          r={d.r}
-          fill="var(--accent)"
-          opacity={d.opacity}
-        />
+        <circle key={i} cx={d.cx} cy={d.cy} r={d.r} fill="var(--accent)" opacity={d.opacity} />
       ))}
     </svg>
   );
 }
 
-function DashedRule() {
+// Long-dash separator. Drawn as a repeating gradient rather than a CSS dashed
+// border because `border-style: dashed` locks the dash length to the border
+// width, which can't reach the long dashes the receipt design uses. Print swaps
+// it back to a real border (see the .receipt-rule print rule) — a background
+// image depends on the browser's "print backgrounds" setting, a border doesn't.
+function DashedRule({ short = false }: { short?: boolean }) {
   return (
     <div
-      className="receipt-rule"
+      className={short ? 'receipt-rule receipt-rule-short' : 'receipt-rule'}
       style={{
-        borderTop: '1.5px dashed var(--ink)',
-        opacity: 0.5,
-        margin: '10px 0',
+        height: 2,
+        margin: short ? '10px auto 0' : '14px 0',
+        width: short ? '62%' : undefined,
+        backgroundImage:
+          'repeating-linear-gradient(to right, var(--ink) 0 9px, transparent 9px 17px)',
       }}
     />
   );
-}
-
-// Jagged bottom edge mimicking a torn sheet of receipt paper, like the reference design.
-function tornBottomClipPath(teeth = 28, toothDepth = 7): string {
-  const points = ['0% 0%', '100% 0%'];
-  for (let i = teeth; i >= 0; i--) {
-    const x = ((i / teeth) * 100).toFixed(2);
-    const y = i % 2 === 0 ? '100%' : `calc(100% - ${toothDepth}px)`;
-    points.push(`${x}% ${y}`);
-  }
-  return `polygon(${points.join(', ')})`;
 }
 
 // Faint fractal-noise texture so the cream panel reads as paper rather than a flat fill.
@@ -99,29 +107,6 @@ const PAPER_GRAIN =
     `<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.045 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>`,
   ) +
   '")';
-
-// Soft, layered smudge in the bottom-left corner echoing the ink thumbprint mark in the reference receipt.
-function CornerSmudge() {
-  return (
-    <div
-      aria-hidden
-      className="receipt-corner-smudge"
-      style={{
-        position: 'absolute',
-        left: -20,
-        bottom: -10,
-        width: 170,
-        height: 130,
-        pointerEvents: 'none',
-        opacity: 0.5,
-        background:
-          'radial-gradient(ellipse 60px 40px at 35% 60%, rgba(28,23,18,0.16), transparent 70%),' +
-          'radial-gradient(ellipse 45px 30px at 55% 40%, rgba(28,23,18,0.12), transparent 70%),' +
-          'radial-gradient(ellipse 70px 50px at 30% 75%, rgba(28,23,18,0.08), transparent 70%)',
-      }}
-    />
-  );
-}
 
 export function POSReceipt({ data }: { data: ReceiptData }) {
   const date = new Date(data.createdAt);
@@ -148,84 +133,77 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
       {/* eslint-disable-next-line @next/next/no-page-custom-font -- this rule targets the Pages Router; see app/layout.tsx for the same pattern */}
       <link
         rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Caveat:wght@600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Roboto+Slab:wght@600;700&family=Playfair+Display:ital,wght@1,700&display=swap"
       />
 
       {/* Outer red frame — decorative on screen only; print strips its
           padding/background entirely (see receipt-frame print rules) so it
           doesn't eat into the 80mm paper width. */}
-      <div className="receipt-frame" style={{ background: 'var(--accent)', padding: 24 }}>
-        {/* Cream paper panel, clipped to a torn bottom edge on screen. Print
-            drops the background, texture and torn-edge clip (see
-            receipt-panel print rules) — the clip-path was cutting into the
-            bottom content once the panel's real print height differed from
-            its screen-preview height. */}
+      <div className="receipt-frame" style={{ background: 'var(--accent)', padding: 26 }}>
+        {/* Cream paper panel. Print drops the background and texture (see the
+            receipt-panel print rules) — thermal paper supplies its own. */}
         <div
           className="receipt-panel"
           style={{
-            position: 'relative',
             background: 'var(--cream)',
             backgroundImage: PAPER_GRAIN,
-            padding: '28px 26px 40px',
-            clipPath: tornBottomClipPath(),
-            overflow: 'hidden',
+            padding: '26px 26px 22px',
           }}
         >
           <div
+            className="receipt-head"
             style={{
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'baseline',
-              fontWeight: 700,
-              letterSpacing: '0.05em',
+              gap: 10,
+              fontSize: 17,
+              letterSpacing: '0.08em',
             }}
           >
-            <span>RECEIPT</span>
-            <span style={{ fontSize: 13 }}>No. {data.orderNumber}</span>
+            <span style={{ color: 'var(--accent)' }}>RECEIPT</span>
+            <span style={{ whiteSpace: 'nowrap' }}>No. {data.orderNumber}</span>
           </div>
 
           <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              margin: '18px 0 8px',
-            }}
+            className="receipt-logo"
+            style={{ display: 'flex', justifyContent: 'center', margin: '16px 0 6px' }}
           >
-            <LogoDots />
+            <LogoMark />
           </div>
 
           <h1
+            className="receipt-brand"
             style={{
-              fontFamily: 'var(--display)',
+              fontFamily: "'Roboto Slab', 'Zilla Slab', Georgia, serif",
+              fontWeight: 700,
               color: 'var(--accent)',
               textAlign: 'center',
-              fontSize: 44,
-              letterSpacing: '0.03em',
-              margin: '0 0 2px',
+              fontSize: 48,
+              lineHeight: 1.05,
+              letterSpacing: '0.01em',
+              margin: '0 0 6px',
             }}
           >
             MERRIER
           </h1>
           <p
+            className="receipt-estd"
             style={{
               textAlign: 'center',
               color: 'var(--accent)',
               fontWeight: 700,
-              letterSpacing: '0.12em',
-              fontSize: 12,
-              margin: '0 0 16px',
+              letterSpacing: '0.1em',
+              fontSize: 14,
+              margin: '0 0 18px',
             }}
           >
             ESTD 2024
           </p>
 
           <p
-            style={{
-              textAlign: 'center',
-              fontSize: 12,
-              lineHeight: 1.6,
-              margin: 0,
-            }}
+            className="receipt-thanks"
+            style={{ textAlign: 'center', fontSize: 13, lineHeight: 1.7, margin: 0 }}
           >
             Thank you for choosing Merrier.
             <br />
@@ -233,103 +211,105 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
           </p>
 
           <DashedRule />
-          <p style={{ textAlign: 'center', fontSize: 12, margin: 0 }}>
+          <p className="receipt-date" style={{ textAlign: 'center', fontSize: 13, margin: 0 }}>
             DATE: {dateLabel} &nbsp; {timeLabel}
           </p>
           <DashedRule />
 
+          {/* Header and every line item share the same column widths. Print
+              re-lays both as a grid so the item name gets a full-width row of
+              its own — at 66mm the ITEM column is far too narrow to hold a
+              product name beside the numbers (see the .receipt-item print
+              rules). */}
           <div
-            style={{
-              display: 'flex',
-              fontWeight: 700,
-              fontSize: 12,
-              letterSpacing: '0.03em',
-            }}
+            className="receipt-cols"
+            style={{ display: 'flex', alignItems: 'baseline', fontSize: 12, letterSpacing: '0.05em' }}
           >
-            <span style={{ flex: 1 }}>ITEM</span>
-            <span style={{ width: 32, textAlign: 'right' }}>QTY</span>
-            <span style={{ width: 60, textAlign: 'right' }}>PRICE</span>
-            <span style={{ width: 64, textAlign: 'right' }}>TOTAL</span>
+            <span className="c-desc" style={{ flex: 1, minWidth: 0 }}>
+              ITEM
+            </span>
+            <span className="c-qty" style={{ width: COL_QTY, textAlign: 'right' }}>
+              QTY
+            </span>
+            <span className="c-price" style={{ width: COL_PRICE, textAlign: 'right' }}>
+              PRICE
+            </span>
+            <span className="c-total" style={{ width: COL_TOTAL, textAlign: 'right' }}>
+              TOTAL
+            </span>
           </div>
           <DashedRule />
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {data.items.map((item, i) => (
+          {data.items.map((item, i) => (
+            <div key={i}>
               <div
-                key={i}
-                style={{ display: 'flex', fontSize: 12, lineHeight: 1.4 }}
+                className="receipt-item"
+                style={{ display: 'flex', alignItems: 'center', fontSize: 12, lineHeight: 1.6 }}
               >
-                <span style={{ flex: 1, paddingRight: 8 }}>
-                  {item.productName}
-                  {item.variantColor || item.variantSize
-                    ? ` - ${item.variantColor} ${item.variantSize}`.trim()
-                    : ''}
+                <span
+                  className="c-desc"
+                  style={{ flex: 1, minWidth: 0, paddingRight: 10, overflowWrap: 'anywhere' }}
+                >
+                  {itemLabel(item)}
                 </span>
-                <span style={{ width: 32, textAlign: 'right' }}>
+                <span className="c-qty" style={{ width: COL_QTY, textAlign: 'right' }}>
                   {item.quantity}
                 </span>
-                <span style={{ width: 60, textAlign: 'right' }}>
+                <span className="c-price" style={{ width: COL_PRICE, textAlign: 'right' }}>
                   {formatLE(item.unitPrice)}
                 </span>
-                <span style={{ width: 64, textAlign: 'right' }}>
+                <span className="c-total" style={{ width: COL_TOTAL, textAlign: 'right' }}>
                   {formatLE(item.subtotal)}
                 </span>
               </div>
-            ))}
-          </div>
+              <DashedRule />
+            </div>
+          ))}
 
           {data.discount > 0 && (
             <>
               <div
-                style={{
-                  marginTop: 12,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 12,
-                }}
+                className="receipt-adjust"
+                style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}
               >
                 <span>SUBTOTAL:</span>
                 <span>{formatLE(data.subtotal)}</span>
               </div>
               <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 12,
-                }}
+                className="receipt-adjust"
+                style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: 13 }}
               >
                 <span>DISCOUNT:</span>
                 <span>-{formatLE(data.discount)}</span>
               </div>
+              <DashedRule />
             </>
           )}
 
-          <DashedRule />
           <div
+            className="receipt-total"
             style={{
               display: 'flex',
               justifyContent: 'space-between',
+              alignItems: 'baseline',
+              gap: 10,
               fontWeight: 700,
-              fontSize: 20,
+              fontSize: 24,
             }}
           >
             <span>TOTAL:</span>
-            <span>{formatLE(data.total)}</span>
+            <span style={{ whiteSpace: 'nowrap' }}>{formatLE(data.total)}</span>
           </div>
           <DashedRule />
 
-          <p style={{ textAlign: 'center', fontSize: 12, margin: 0 }}>
-            PAYMENT METHOD:{' '}
-            {data.paymentMethod === 'POS_CASH' ? 'CASH' : 'CARD'}
+          <p className="receipt-pay" style={{ textAlign: 'center', fontSize: 11, margin: 0 }}>
+            PAYMENT METHOD: {data.paymentMethod === 'POS_CASH' ? 'CASH' : 'CARD'}
           </p>
           <DashedRule />
 
           <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              margin: '4px 0 6px',
-            }}
+            className="receipt-qr"
+            style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 8px' }}
           >
             {/* Static file (not generated from NEXT_PUBLIC_SITE_URL) — that
                 env var is inlined into the JS bundle at build time, so if
@@ -341,36 +321,45 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
             <img
               src="/receipt/qr-code.png"
               alt="QR code linking to the Merrier website"
-              width={130}
-              height={130}
+              width={132}
+              height={132}
             />
           </div>
           <p
+            className="receipt-qr-cap"
             style={{
               textAlign: 'center',
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.05em',
+              fontSize: 10,
+              letterSpacing: '0.08em',
               color: 'var(--accent)',
-              margin: '0 0 14px',
+              margin: 0,
             }}
           >
             SCAN TO VISIT OUR WEBSITE
           </p>
+          <DashedRule short />
 
           <p
+            className="receipt-signoff"
             style={{
               textAlign: 'center',
-              fontFamily: "'Caveat', cursive",
+              fontFamily: "'Playfair Display', Georgia, serif",
+              fontStyle: 'italic',
+              fontWeight: 700,
               color: 'var(--accent)',
-              fontSize: 34,
-              margin: '0 0 4px',
+              fontSize: 36,
+              lineHeight: 1.2,
+              margin: '10px 0 0',
             }}
           >
             Thank You!
           </p>
 
-          <CornerSmudge />
+          {/* Blank tail, print-only. The tear bar / auto-cutter sits a couple
+              of centimetres downstream of the print head, so without trailing
+              feed the cut lands mid-content — which is why the QR caption and
+              sign-off were missing from printed receipts entirely. */}
+          <div className="receipt-feed" aria-hidden />
         </div>
       </div>
     </div>

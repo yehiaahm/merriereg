@@ -378,10 +378,18 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
     <div>
       <style>{`
         #pos-receipt-wrap {
-          width: 380px;
+          /* Wide enough that the ITEM column can hold a full product name
+             beside its numbers, the way the receipt design lays it out — at
+             the old 380px a name like "Mister Freedom Dude Rancher - Indigo
+             Corduroy" wrapped to four cramped lines. */
+          width: 480px;
           margin: 0 auto 60px;
           box-shadow: 0 4px 24px rgba(28, 23, 18, 0.18);
         }
+
+        /* Print-only blank tail; on screen the panel's own bottom padding
+           already ends the receipt, so the spacer would just add dead cream. */
+        .receipt-feed { display: none; }
 
         @media print {
           /* 80mm thermal roll, no fixed page height so the receipt prints its
@@ -403,9 +411,8 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
           #pos-receipt-wrap {
             position: absolute;
             top: 0;
-            left: 0;
-            /* A real physical width, not a scaled-down screen size — the
-               previous version rendered the receipt at its 380px screen
+            /* A real physical width, not a scaled-down screen size — an
+               earlier version rendered the receipt at its 380px screen
                width (~100.6mm) and used CSS zoom to shrink everything,
                fonts included, to fit 80mm. That made already-small 12px
                text effectively ~9.5px and introduced fractional-scaling
@@ -413,16 +420,18 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
                Sizing directly in mm keeps every font-size at its true,
                readable pixel value.
 
-               The roll itself is 80mm, but most 80mm thermal printers
-               can't actually mark all 80mm — their real printable head
-               width is a few mm narrower. With margin:0 and content sized
-               to the full 80mm, that unprintable strip ate into the right
-               column (TOTAL/prices got sliced off, as seen on a physical
-               receipt). Sizing content to 72mm and centering it on the
-               80mm page leaves a safety margin on both edges so nothing
-               printable falls outside the head's actual range. */
-            width: 72mm;
-            margin: 0 4mm;
+               The roll is 80mm but the head can't mark all of it: a
+               standard 80mm printer images 72mm (576 dots at 203dpi) with
+               a dead strip on each side, and the roll is never perfectly
+               centred in its holder, so the usable band drifts a couple of
+               mm run to run. Sizing content to exactly 72mm left zero
+               slack for that drift — which is why TOTAL/prices still came
+               back sliced off ("TOTA", "449 L") on a physical receipt.
+               66mm inset 6mm from the left edge keeps ~7mm of tolerance on
+               each side, so nothing lands outside the head's real range. */
+            left: 6mm;
+            width: 66mm;
+            margin: 0;
             box-shadow: none;
           }
 
@@ -430,10 +439,21 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
              plain sans-serif for print: Space Mono is a screen display
              choice, and thin monospace glyphs at small sizes are exactly
              what a thermal head reproduces as broken/faint strokes.
-             Brand elements (the MERRIER wordmark, the Caveat signature)
+             Brand elements (the MERRIER wordmark, the italic sign-off)
              set their own font-family inline and are untouched, so the
              branding still prints. */
           #pos-receipt { font-family: Arial, Helvetica, sans-serif !important; }
+
+          /* A thermal head has one ink: black dots or nothing. Anything
+             that isn't solid black — the red --accent brand colour, the
+             #1c1712 near-black ink, any opacity below 1 — gets dithered
+             into a gray halftone, which is why MERRIER and ESTD 2024 came
+             out faded and blotchy on paper. Forcing pure black across the
+             whole receipt makes every stroke a solid burn. */
+          #pos-receipt, #pos-receipt * {
+            color: #000 !important;
+            opacity: 1 !important;
+          }
 
           /* The red frame and cream panel are a screen "card" affordance —
              on a monochrome thermal printer that background usually won't
@@ -446,22 +466,112 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
           .receipt-panel {
             background: none !important;
             background-image: none !important;
-            /* The torn-edge cutout was clipping into the last lines of
-               content (the "Thank You!" line was printing as "nk You!")
-               whenever the print-time content height didn't exactly match
-               the screen-preview height it was tuned for. */
-            clip-path: none !important;
-            padding: 10px 8px 16px !important;
+            padding: 6px 2mm 0 !important;
           }
 
-          /* Purely decorative screen flourish; a soft rgba gradient like
-             this dithers into visible noise on a 1-bit thermal head. */
-          .receipt-corner-smudge { display: none !important; }
+          /* The logo mark is a halftone dot field — the one thing a 1-bit
+             thermal head is guaranteed to dither into noise (it printed as
+             the gray blob above MERRIER on the physical receipt). The
+             wordmark carries the branding on paper instead. */
+          .receipt-logo { display: none !important; }
 
-          /* Section rules render at 50% opacity for a soft look on screen;
-             a thermal head can't do partial ink, so a half-opacity black
-             line prints as a broken, dotted-looking line instead of solid. */
-          .receipt-rule { opacity: 1 !important; }
+          /* On screen the rules are a repeating-gradient background so the
+             dashes can be long; backgrounds only print when the browser's
+             "print backgrounds" option is on, so print swaps in a real
+             border, which always prints. */
+          .receipt-rule {
+            background-image: none !important;
+            height: 0 !important;
+            border-top: 1.5px dashed #000 !important;
+            /* Vertical space is paper, and paper is the thing being spent. */
+            margin: 5px 0 !important;
+          }
+          .receipt-rule-short { width: 60% !important; margin: 5px auto !important; }
+
+          .receipt-head { font-size: 12px !important; letter-spacing: 0.04em !important; }
+          .receipt-brand {
+            font-size: 38px !important;
+            line-height: 1.05 !important;
+            margin: 2px 0 3px !important;
+          }
+          .receipt-estd { font-size: 12px !important; margin-bottom: 10px !important; }
+          .receipt-thanks { font-size: 11px !important; line-height: 1.5 !important; }
+          .receipt-date { font-size: 11px !important; }
+          .receipt-adjust { font-size: 11px !important; }
+
+          /* At 66mm the ITEM column can't hold a product name beside the
+             numbers — that's what wrapped names into five cramped lines and
+             squeezed TOTAL off the edge of the paper. Print re-lays the
+             header and each item as the same 4-track grid, then gives the
+             name its own full-width row spanning all four tracks, so the
+             numbers always sit in fixed columns underneath:
+
+               Vintage Denim Bucket Hat - Olive S
+                                  1    60 LE    60 LE
+
+             Tracks are sized in mm so they hold their share of the 66mm band
+             regardless of how the browser rounds px to mm. */
+          .receipt-cols,
+          .receipt-item {
+            display: grid !important;
+            grid-template-columns: 1fr 8mm 15mm 16mm;
+            column-gap: 1mm;
+            align-items: baseline !important;
+          }
+          /* The inline px column widths are for the wide screen preview; they
+             would overflow their grid tracks if left in place. */
+          .receipt-cols > span,
+          .receipt-item > span { width: auto !important; padding-right: 0 !important; }
+          /* Every cell is placed explicitly. Auto-placement would drop the
+             numbers into columns 1-3 of the second row once the name has
+             spanned the first, leaving them a full column left of the
+             headers they belong under. */
+          .receipt-item .c-desc { grid-column: 1 / -1; }
+          .receipt-item .c-qty { grid-column: 2; }
+          .receipt-item .c-price { grid-column: 3; }
+          .receipt-item .c-total { grid-column: 4; }
+
+          .receipt-cols { font-size: 11px !important; letter-spacing: 0.02em !important; }
+          .receipt-item { font-size: 11px !important; line-height: 1.35 !important; }
+          .receipt-item .c-desc { font-size: 12px !important; }
+          /* A price is a single token; wrapping it mid-number would be worse
+             than letting a rare very long one run into the column beside it. */
+          .c-qty, .c-price, .c-total { white-space: nowrap !important; }
+          /* Keep a line item's name and its numbers on the same physical
+             receipt rather than letting a page break fall between them. */
+          .receipt-item { break-inside: avoid; page-break-inside: avoid; }
+
+          /* The single most-read number on the receipt. */
+          .receipt-total { font-size: 19px !important; }
+
+          .receipt-pay { font-size: 11px !important; }
+
+          /* The QR only has to survive a phone camera, and at 132px it was
+             costing ~35mm of roll per sale. 26mm still scans reliably. */
+          .receipt-qr {
+            margin: 2px 0 4px !important;
+          }
+          .receipt-qr img {
+            width: 26mm !important;
+            height: 26mm !important;
+          }
+          .receipt-qr-cap { font-size: 9px !important; }
+
+          .receipt-signoff {
+            font-size: 28px !important;
+            margin: 6px 0 0 !important;
+          }
+
+          /* Trailing feed: the tear bar / auto-cutter sits downstream of the
+             print head, so the last ~15-20mm of a receipt is whatever the
+             printer happens to advance after the final line. Without this
+             blank tail the cut lands mid-content — which is why the printed
+             receipt ended at the QR code with the caption and sign-off
+             missing entirely. */
+          .receipt-feed {
+            display: block !important;
+            height: 20mm;
+          }
         }
       `}</style>
 
