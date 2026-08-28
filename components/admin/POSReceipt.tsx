@@ -74,6 +74,7 @@ function LogoDots() {
 function DashedRule() {
   return (
     <div
+      className="receipt-rule"
       style={{
         borderTop: '1.5px dashed var(--ink)',
         opacity: 0.5,
@@ -107,6 +108,7 @@ function CornerSmudge() {
   return (
     <div
       aria-hidden
+      className="receipt-corner-smudge"
       style={{
         position: 'absolute',
         left: -20,
@@ -134,7 +136,10 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
     let cancelled = false;
     QRCode.toDataURL(siteUrl, {
       margin: 1,
-      width: 220,
+      // Rendered at a much larger source resolution than its 130px display
+      // size (both on screen and in print) so it rasterizes crisply at
+      // thermal-printer DPI (~200–300) instead of the 96dpi screen assumes.
+      width: 320,
       color: { dark: '#1c1712', light: '#ece5d8' },
     })
       .then((url) => {
@@ -173,10 +178,17 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
         href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Caveat:wght@600;700&display=swap"
       />
 
-      {/* Outer red frame */}
-      <div style={{ background: 'var(--accent)', padding: 24 }}>
-        {/* Cream paper panel, clipped to a torn bottom edge */}
+      {/* Outer red frame — decorative on screen only; print strips its
+          padding/background entirely (see receipt-frame print rules) so it
+          doesn't eat into the 80mm paper width. */}
+      <div className="receipt-frame" style={{ background: 'var(--accent)', padding: 24 }}>
+        {/* Cream paper panel, clipped to a torn bottom edge on screen. Print
+            drops the background, texture and torn-edge clip (see
+            receipt-panel print rules) — the clip-path was cutting into the
+            bottom content once the panel's real print height differed from
+            its screen-preview height. */}
         <div
+          className="receipt-panel"
           style={{
             position: 'relative',
             background: 'var(--cream)',

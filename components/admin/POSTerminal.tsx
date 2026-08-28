@@ -398,17 +398,61 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
           body * { visibility: hidden; }
           #pos-receipt-wrap, #pos-receipt-wrap * { visibility: visible; }
 
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
           #pos-receipt-wrap {
             position: absolute;
             top: 0;
             left: 0;
+            /* A real physical width, not a scaled-down screen size — the
+               previous version rendered the receipt at its 380px screen
+               width (~100.6mm) and used CSS zoom to shrink everything,
+               fonts included, to fit 80mm. That made already-small 12px
+               text effectively ~9.5px and introduced fractional-scaling
+               blur, which is why printed text came out tiny and faint.
+               Sizing directly in mm keeps every font-size at its true,
+               readable pixel value. */
+            width: 80mm;
             margin: 0;
             box-shadow: none;
-            /* The receipt is designed at a 380px canvas width (~100.6mm at 96dpi);
-               zoom scales the whole design — fonts, padding, gaps included — down
-               to fit the real 80mm paper width without any content re-wrapping. */
-            zoom: 0.7957;
           }
+
+          /* Data text (item names, prices, dates, totals) switches to a
+             plain sans-serif for print: Space Mono is a screen display
+             choice, and thin monospace glyphs at small sizes are exactly
+             what a thermal head reproduces as broken/faint strokes.
+             Brand elements (the MERRIER wordmark, the Caveat signature)
+             set their own font-family inline and are untouched, so the
+             branding still prints. */
+          #pos-receipt { font-family: Arial, Helvetica, sans-serif !important; }
+
+          /* The red frame and cream panel are a screen "card" affordance —
+             on a monochrome thermal printer that background usually won't
+             render at all (Chrome/Edge don't print backgrounds by default),
+             leaving their padding as pure dead space on both sides of the
+             paper, which is the "too much unused space" in the printed
+             photo. Print drops the frame/panel padding and background
+             entirely and lets the dashed rules carry the layout instead. */
+          .receipt-frame { background: none !important; padding: 0 !important; }
+          .receipt-panel {
+            background: none !important;
+            background-image: none !important;
+            /* The torn-edge cutout was clipping into the last lines of
+               content (the "Thank You!" line was printing as "nk You!")
+               whenever the print-time content height didn't exactly match
+               the screen-preview height it was tuned for. */
+            clip-path: none !important;
+            padding: 10px 8px 16px !important;
+          }
+
+          /* Purely decorative screen flourish; a soft rgba gradient like
+             this dithers into visible noise on a 1-bit thermal head. */
+          .receipt-corner-smudge { display: none !important; }
+
+          /* Section rules render at 50% opacity for a soft look on screen;
+             a thermal head can't do partial ink, so a half-opacity black
+             line prints as a broken, dotted-looking line instead of solid. */
+          .receipt-rule { opacity: 1 !important; }
         }
       `}</style>
 
