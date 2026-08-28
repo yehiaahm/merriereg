@@ -414,25 +414,39 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
           #pos-receipt-wrap {
             position: absolute;
             top: 0;
-            /* A real physical width, not a scaled-down screen size — an
-               earlier version rendered the receipt at its 380px screen
-               width (~100.6mm) and used CSS zoom to shrink everything,
-               fonts included, to fit 80mm. That made already-small 12px
-               text effectively ~9.5px and introduced fractional-scaling
-               blur, which is why printed text came out tiny and faint.
-               Sizing directly in mm keeps every font-size at its true,
-               readable pixel value.
+            /* Geometry for the ZKTeco ZKP8003: 576 dots per line at 203dpi
+               is 72.08mm of printable width, centred on a 79.5mm roll, so
+               3.71mm down each edge of the paper is dead.
 
-               The roll is 80mm but the head can't mark all of it: a
-               standard 80mm printer images 72mm (576 dots at 203dpi) with
-               a dead strip on each side, and the roll is never perfectly
-               centred in its holder, so the usable band drifts a couple of
-               mm run to run. Sizing content to exactly 72mm left zero
-               slack for that drift — which is why TOTAL/prices still came
-               back sliced off ("TOTA", "449 L") on a physical receipt.
-               66mm inset 6mm from the left edge keeps ~7mm of tolerance on
-               each side, so nothing lands outside the head's real range. */
-            left: 6mm;
+               Where CSS x=0 lands in that picture is the whole question,
+               and the first physical receipt answered it. That print used
+               width 72mm at margin 0 4mm with 8px of panel padding, which
+               puts the TOTAL column's right edge at CSS 73.9mm — and it
+               came back reading "TOTA", one Arial character (~1.9mm) short.
+               So the last printable column sits at CSS ~72mm, not at the
+               ~75.8mm it would be if x=0 were the paper's edge: Chromium
+               clamps a zero page margin up to the hardware margin, making
+               CSS 0 the first printable dot and the band exactly 0 → 72mm.
+
+               Everything therefore has to live inside CSS 0 → 72mm, and
+               centring in that band is what centres it on the paper. 66mm
+               at left:3mm leaves 3.0mm of slack inside the band on the left
+               and 3.08mm on the right, which lands as 6.71mm / 6.79mm of
+               margin on the physical paper — even to within a tenth of a
+               millimetre, with room to absorb the roll's ±0.5mm width
+               tolerance and any drift in its holder.
+
+               (The previous 66mm at left:6mm satisfied the band by 0.08mm
+               on the right — one drift away from clipping again — and read
+               visibly lopsided at 9.71mm / 3.79mm on paper.)
+
+               Note these are real physical widths, not a scaled screen
+               size. An early version rendered the 380px screen layout and
+               used CSS zoom to squeeze it into 80mm, which shrank 12px text
+               to ~9.5px and added fractional-scaling blur — that was the
+               tiny, faint print. Sizing in mm keeps every font-size at its
+               true value. */
+            left: 3mm;
             width: 66mm;
             margin: 0;
             box-shadow: none;
@@ -503,16 +517,22 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
           }
           .receipt-rule-short { width: 60% !important; margin: 5px auto !important; }
 
-          .receipt-head { font-size: 12px !important; letter-spacing: 0.04em !important; }
+          /* Type sizes are set against what the head can actually resolve.
+             At 203dpi a CSS pixel is 2.12 head dots, and an Arial stem is
+             about 0.09em, so 11px text lands on a 2.1-dot stem — printable,
+             but right at the edge where a stem starts breaking up. Nothing
+             on the receipt goes below 12px (a 2.5-dot stem), and the small
+             letter-spaced captions are bolded rather than shrunk. */
+          .receipt-head { font-size: 13px !important; letter-spacing: 0.04em !important; }
           .receipt-brand {
             font-size: 38px !important;
             line-height: 1.05 !important;
             margin: 2px 0 3px !important;
           }
           .receipt-estd { font-size: 12px !important; margin-bottom: 10px !important; }
-          .receipt-thanks { font-size: 11px !important; line-height: 1.5 !important; }
-          .receipt-date { font-size: 11px !important; }
-          .receipt-adjust { font-size: 11px !important; }
+          .receipt-thanks { font-size: 12px !important; line-height: 1.5 !important; }
+          .receipt-date { font-size: 12px !important; }
+          .receipt-adjust { font-size: 12px !important; }
 
           /* At 66mm the ITEM column can't hold a product name beside the
              numbers — that's what wrapped names into five cramped lines and
@@ -525,11 +545,15 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
                                   1    60 LE    60 LE
 
              Tracks are sized in mm so they hold their share of the 66mm band
-             regardless of how the browser rounds px to mm. */
+             regardless of how the browser rounds px to mm. 7 + 16 + 17 plus
+             three 1mm gaps is 43mm of the 62mm of content, sized so a
+             five-figure price still clears its column at 12px. The 1fr track
+             only ever holds the word ITEM — every item name spans all four
+             tracks on its own row — so it can give up the difference. */
           .receipt-cols,
           .receipt-item {
             display: grid !important;
-            grid-template-columns: 1fr 8mm 15mm 16mm;
+            grid-template-columns: 1fr 7mm 16mm 17mm;
             column-gap: 1mm;
             align-items: baseline !important;
           }
@@ -546,12 +570,22 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
           .receipt-item .c-price { grid-column: 3; }
           .receipt-item .c-total { grid-column: 4; }
 
-          .receipt-cols { font-size: 11px !important; letter-spacing: 0.02em !important; }
-          .receipt-item { font-size: 11px !important; line-height: 1.35 !important; }
-          .receipt-item .c-desc { font-size: 12px !important; }
+          .receipt-cols {
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            letter-spacing: 0.02em !important;
+          }
+          .receipt-item { font-size: 12px !important; line-height: 1.4 !important; }
+          .receipt-item .c-desc { font-size: 13px !important; }
           /* A price is a single token; wrapping it mid-number would be worse
-             than letting a rare very long one run into the column beside it. */
+             than letting a very long one run into the column beside it. */
           .c-qty, .c-price, .c-total { white-space: nowrap !important; }
+          /* Drop the per-line currency suffix. "12999.50 LE" measures 18mm at
+             this size against a 16mm PRICE column, so it would overflow left
+             and collide with QTY; without the suffix the same columns hold
+             eight digits and a decimal point. The grand TOTAL below still
+             spells out LE. */
+          .receipt-item .money-cur { display: none !important; }
           /* Keep a line item's name and its numbers on the same physical
              receipt rather than letting a page break fall between them. */
           .receipt-item { break-inside: avoid; page-break-inside: avoid; }
@@ -559,10 +593,11 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
           /* The single most-read number on the receipt. */
           .receipt-total { font-size: 19px !important; }
 
-          .receipt-pay { font-size: 11px !important; }
+          .receipt-pay { font-size: 12px !important; }
 
           /* The QR only has to survive a phone camera, and at 132px it was
-             costing ~35mm of roll per sale. 26mm still scans reliably. */
+             costing ~35mm of roll per sale. 26mm is 208 head dots across —
+             ample for a 25x25 module code at roughly 8 dots a module. */
           .receipt-qr {
             margin: 2px 0 4px !important;
           }
@@ -570,10 +605,19 @@ function SaleCompleteScreen({ result, onNewSale }: { result: SaleResult; onNewSa
             width: 26mm !important;
             height: 26mm !important;
           }
-          .receipt-qr-cap { font-size: 9px !important; }
+          /* Was 9px: a 1.9-dot stem, the thinnest thing on the receipt and
+             the first to break up. Bigger and bold rather than shrunk. */
+          .receipt-qr-cap {
+            font-size: 12px !important;
+            font-weight: 700 !important;
+          }
 
+          /* Playfair is a high-contrast face — its thin strokes are about
+             0.035em, so at 28px they came to 2.1 head dots and would print
+             patchy where the wordmark above prints solid. The size is set
+             from that thin stroke, not from how big the words look. */
           .receipt-signoff {
-            font-size: 28px !important;
+            font-size: 34px !important;
             margin: 6px 0 0 !important;
           }
 

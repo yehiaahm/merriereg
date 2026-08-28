@@ -26,10 +26,29 @@ const COL_QTY = 36;
 const COL_PRICE = 60;
 const COL_TOTAL = 66;
 
-function formatLE(piastres: number): string {
+function formatAmount(piastres: number): string {
   const egp = piastres / 100;
-  const formatted = egp % 1 === 0 ? egp.toFixed(0) : egp.toFixed(2);
-  return `${formatted} LE`;
+  return egp % 1 === 0 ? egp.toFixed(0) : egp.toFixed(2);
+}
+
+function formatLE(piastres: number): string {
+  return `${formatAmount(piastres)} LE`;
+}
+
+// A price for the PRICE / TOTAL columns, with the currency in its own span.
+// Those two columns are 16mm and 17mm on paper, and "12999.50 LE" needs 18mm
+// at the print size — it would overflow leftward into the QTY column and
+// collide with it. Print hides the suffix (see the .money-cur print rule),
+// which buys back 5mm and leaves the columns able to hold eight digits and a
+// decimal point. The grand TOTAL line still spells out LE, so the currency is
+// stated on every receipt; per-line suffixes are redundant next to it.
+function Money({ piastres }: { piastres: number }) {
+  return (
+    <>
+      {formatAmount(piastres)}
+      <span className="money-cur"> LE</span>
+    </>
+  );
 }
 
 function itemLabel(item: ReceiptItem): string {
@@ -313,10 +332,10 @@ export function POSReceipt({ data }: { data: ReceiptData }) {
                   {item.quantity}
                 </span>
                 <span className="c-price" style={{ width: COL_PRICE, textAlign: 'right' }}>
-                  {formatLE(item.unitPrice)}
+                  <Money piastres={item.unitPrice} />
                 </span>
                 <span className="c-total" style={{ width: COL_TOTAL, textAlign: 'right' }}>
-                  {formatLE(item.subtotal)}
+                  <Money piastres={item.subtotal} />
                 </span>
               </div>
               <DashedRule />
