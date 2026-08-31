@@ -41,6 +41,23 @@ const emptyVariant: VariantForm = {
   active: true,
 };
 
+// Images are stored as data: URLs (base64) directly in the database rather
+// than uploaded to a file host — this app has no object storage (S3,
+// Cloudinary, etc.) configured, and the filesystem on Railway is ephemeral
+// across deploys, so a data URL is the only option that survives a redeploy
+// without adding infrastructure. next/image auto-detects `data:` sources and
+// renders them unoptimized, and the CSP's `img-src` already allows `data:`.
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB, before base64 overhead
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(reader.error ?? new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 function slugify(name: string) {
   return name
     .toLowerCase()
@@ -83,6 +100,25 @@ export function ProductForm({
 
   function updateImage(index: number, patch: Partial<ImageForm>) {
     setImages((prev) => prev.map((img, i) => (i === index ? { ...img, ...patch } : img)));
+  }
+
+  async function handleImageFile(index: number, file: File | undefined) {
+    if (!file) return;
+    setError(null);
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError('That image is too large (max 5MB).');
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      updateImage(index, { url: dataUrl });
+    } catch {
+      setError('Could not read that image file.');
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -212,18 +248,45 @@ export function ProductForm({
       <fieldset style={{ border: 'none', padding: 0 }}>
         <legend style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Images</legend>
         <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10 }}>
-          Paste image URLs (host them anywhere — e.g. an image CDN). Optionally tag an image with a color so it
-          swaps automatically when that color is selected.
+          Choose an image straight from your computer, or paste a URL if it&apos;s already hosted somewhere (e.g. an
+          image CDN). Optionally tag an image with a color so it swaps automatically when that color is selected.
         </p>
         {images.map((img, i) => (
-          <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 8, marginBottom: 8 }}>
-            <input placeholder="https://…" value={img.url} onChange={(e) => updateImage(i, { url: e.target.value })} />
-            <input placeholder="Alt text" value={img.altText} onChange={(e) => updateImage(i, { altText: e.target.value })} />
-            <input placeholder="Color (optional)" value={img.colorValue} onChange={(e) => updateImage(i, { colorValue: e.target.value })} />
+          <div
+            key={i}
+            style={{ display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px solid var(--line)', padding: 12, marginBottom: 8 }}
+          >
+            {img.url && (
+              // eslint-disable-next-line @next/next/no-img-element -- preview of an in-memory/data-URL or arbitrary pasted URL, not worth next/image's optimization pipeline
+              <img
+                src={img.url}
+                alt=""
+                style={{ width: 64, height: 64, objectFit: 'cover', border: '1px solid var(--line)', flexShrink: 0 }}
+              />
+            )}
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  void handleImageFile(i, e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+              <input
+                placeholder="…or paste an image URL"
+                value={img.url.startsWith('data:') ? '' : img.url}
+                onChange={(e) => updateImage(i, { url: e.target.value })}
+              />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <input placeholder="Alt text" value={img.altText} onChange={(e) => updateImage(i, { altText: e.target.value })} />
+                <input placeholder="Color (optional)" value={img.colorValue} onChange={(e) => updateImage(i, { colorValue: e.target.value })} />
+              </div>
+            </div>
             <button
               type="button"
               className="btn btn-outline"
-              style={{ minHeight: 40, padding: '0 12px' }}
+              style={{ minHeight: 40, padding: '0 12px', flexShrink: 0 }}
               onClick={() => setImages((prev) => prev.filter((_, idx) => idx !== i))}
             >
               Remove
