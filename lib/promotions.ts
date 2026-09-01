@@ -14,9 +14,9 @@ export type TierDiscount = {
 };
 
 /**
- * Buy 3 Get 1 Free / Buy 5 Get 2 Free, applied once as a threshold across the
- * whole cart (not repeating per group): at 5+ items the cheapest 2 units are
- * free, at 3-4 items the cheapest 1 unit is free. The higher tier wins.
+ * Buy 1 Get 1 Free, applied across the whole cart: for every 2 units in the
+ * cart, the cheaper of the pair is free (e.g. 2 items -> 1 free, 4 items ->
+ * 2 free).
  */
 export function tierDiscount(items: PromoLine[]): TierDiscount {
   const { freeCount, amount, label } = tierDiscountDetailed(
@@ -38,15 +38,8 @@ export function tierDiscountDetailed(items: PromoLineDetailed[]): TierDiscountDe
   units.sort((a, b) => a.price - b.price);
   const totalQty = units.length;
 
-  let freeCount = 0;
-  let label: string | null = null;
-  if (totalQty >= 5) {
-    freeCount = 2;
-    label = 'Buy 5 Get 2 Free';
-  } else if (totalQty >= 3) {
-    freeCount = 1;
-    label = 'Buy 3 Get 1 Free';
-  }
+  const freeCount = Math.floor(totalQty / 2);
+  const label = freeCount > 0 ? 'Buy 1 Get 1 Free' : null;
 
   const freeUnits = units.slice(0, freeCount);
   const amount = freeUnits.reduce((sum, u) => sum + u.price, 0);
@@ -61,7 +54,7 @@ export function tierDiscountDetailed(items: PromoLineDetailed[]): TierDiscountDe
   return { freeCount, amount, label, freeGroups: Array.from(groups.values()) };
 }
 
-/** "🎉 Buy 5 Get 2 Free — 2 × Black Tee are FREE!" — null when no tier is unlocked. */
+/** "🎉 Buy 1 Get 1 Free — 2 × Black Tee are FREE!" — null when no tier is unlocked. */
 export function formatFreeItemsMessage(tier: TierDiscountDetailed): string | null {
   if (tier.freeCount === 0 || !tier.label) return null;
   const parts = tier.freeGroups.map((g) => (g.count > 1 ? `${g.count} × ${g.name}` : g.name));
