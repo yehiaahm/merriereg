@@ -8,6 +8,7 @@
     "start": "node scripts/start.mjs",
     "lint": "eslint .",
     "test:e2e": "tsx scripts/test-e2e.ts",
+    "test:analytics": "tsx scripts/test-analytics.ts",
     "db:local": "node scripts/local-postgres.mjs",
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",

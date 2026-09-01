@@ -1,37 +1,33 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import { formatEGP } from '@/lib/money';
+import { OverviewDashboard } from '@/components/admin/OverviewDashboard';
+import { RecentOrders } from '@/components/admin/RecentOrders';
+import { RecentActivity } from '@/components/admin/RecentActivity';
+import { getRecentActivity } from '@/lib/analytics/activity';
 
 export const metadata = { title: 'Admin Dashboard' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
-  const [orderCount, pendingCount, revenueAgg, lowStockVariants, recentOrders] = await Promise.all([
-    prisma.order.count(),
-    prisma.order.count({ where: { status: 'PENDING' } }),
-    prisma.order.aggregate({
-      _sum: { total: true },
-      where: { paymentStatus: 'PAID' },
+  const [recentOrders, recentActivity, lowStockVariants] = await Promise.all([
+    prisma.order.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: 8,
+      select: { id: true, orderNumber: true, customerName: true, total: true, status: true, createdAt: true },
     }),
+    getRecentActivity(10),
     prisma.productVariant.findMany({
       where: { active: true, stock: { gt: 0 } },
       include: { product: true },
     }),
-    prisma.order.findMany({ orderBy: { createdAt: 'desc' }, take: 8 }),
   ]);
-
   const lowStock = lowStockVariants.filter((v) => v.stock <= v.lowStockThreshold);
-
-  const stats = [
-    { label: 'Total Orders', value: orderCount },
-    { label: 'Pending Orders', value: pendingCount },
-    { label: 'Revenue (Paid)', value: formatEGP(revenueAgg._sum.total ?? 0) },
-    { label: 'Low Stock Variants', value: lowStock.length },
-  ];
 
   return (
     <div>
-      <h1 style={{ fontSize: 28, marginBottom: 24 }}>Dashboard</h1>
+      <div className="admin-page-head">
+        <h1>Dashboard</h1>
+      </div>
 
       <Link
         href="/admin/pos"
@@ -43,7 +39,7 @@ export default async function AdminDashboardPage() {
           background: 'var(--ink)',
           color: 'var(--cream)',
           padding: '18px 22px',
-          marginBottom: 24,
+          marginBottom: 28,
         }}
       >
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -58,67 +54,44 @@ export default async function AdminDashboardPage() {
         <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 700 }}>Open &rarr;</span>
       </Link>
 
-      <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
-        {stats.map((s) => (
-          <div key={s.label} style={{ border: '1px solid var(--line)', padding: 18 }}>
-            <div className="eyebrow">{s.label}</div>
-            <div style={{ fontSize: 26, fontWeight: 700, marginTop: 6 }}>{s.value}</div>
-          </div>
-        ))}
-      </div>
+      <OverviewDashboard />
 
-      <div className="admin-columns-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 32 }}>
-        <div>
-          <h2 style={{ fontSize: 18, marginBottom: 12 }}>Recent Orders</h2>
-          <div className="admin-table-scroll">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Order</th>
-                <th>Customer</th>
-                <th>Total</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentOrders.map((o) => (
-                <tr key={o.id}>
-                  <td>
-                    <Link href={`/admin/orders/${o.id}`}>{o.orderNumber}</Link>
-                  </td>
-                  <td>{o.customerName}</td>
-                  <td>{formatEGP(o.total)}</td>
-                  <td>
-                    <span className="badge badge-status">{o.status}</span>
-                  </td>
-                </tr>
-              ))}
-              {recentOrders.length === 0 && (
-                <tr>
-                  <td colSpan={4} style={{ color: 'var(--ink-soft)' }}>
-                    No orders yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      <div className="admin-columns-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginTop: 20 }}>
+        <div className="admin-panel">
+          <div className="admin-panel-head">
+            <h2>Recent Orders</h2>
+            <Link href="/admin/orders" style={{ fontSize: 12, fontWeight: 700 }}>
+              View all &rarr;
+            </Link>
           </div>
+          <RecentOrders orders={recentOrders} />
         </div>
 
-        <div>
-          <h2 style={{ fontSize: 18, marginBottom: 12 }}>Low Stock</h2>
-          {lowStock.length === 0 ? (
-            <p style={{ color: 'var(--ink-soft)', fontSize: 14 }}>Nothing low on stock.</p>
-          ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {lowStock.map((v) => (
-                <li key={v.id} style={{ fontSize: 13, borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
-                  <Link href={`/admin/products/${v.productId}`}>{v.product.name}</Link> — {v.color}/{v.size}:{' '}
-                  <strong>{v.stock} left</strong>
-                </li>
-              ))}
-            </ul>
-          )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div className="admin-panel">
+            <div className="admin-panel-head">
+              <h2>Recent Activity</h2>
+            </div>
+            <RecentActivity events={recentActivity} />
+          </div>
+
+          <div className="admin-panel">
+            <div className="admin-panel-head">
+              <h2>Low Stock</h2>
+            </div>
+            {lowStock.length === 0 ? (
+              <p style={{ color: 'var(--ink-soft)', fontSize: 13, margin: 0 }}>Nothing low on stock.</p>
+            ) : (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {lowStock.map((v) => (
+                  <li key={v.id} style={{ fontSize: 13, borderBottom: '1px solid var(--line)', paddingBottom: 8 }}>
+                    <Link href={`/admin/products/${v.productId}`}>{v.product.name}</Link> — {v.color}/{v.size}:{' '}
+                    <strong>{v.stock} left</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
     </div>
