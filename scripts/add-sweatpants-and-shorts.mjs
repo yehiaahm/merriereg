@@ -25,10 +25,10 @@ async function main() {
       status: 'POS_ONLY',
       images: [],
       variants: [
-        { size: 'S', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-S', price: 49900, stock: 6 },
-        { size: 'M', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-M', price: 49900, stock: 6 },
-        { size: 'L', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-L', price: 49900, stock: 4 },
-        { size: 'XL', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-XL', price: 49900, stock: 1 },
+        { size: 'S', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-S', price: 84900, stock: 6 },
+        { size: 'M', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-M', price: 84900, stock: 6 },
+        { size: 'L', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-L', price: 84900, stock: 4 },
+        { size: 'XL', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-SWEATP-GRY-XL', price: 84900, stock: 1 },
       ],
     },
     {
@@ -38,10 +38,10 @@ async function main() {
       status: 'POS_ONLY',
       images: [],
       variants: [
-        { size: 'S', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-S', price: 49900, stock: 6 },
-        { size: 'M', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-M', price: 49900, stock: 5 },
-        { size: 'L', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-L', price: 49900, stock: 2 },
-        { size: 'XL', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-XL', price: 49900, stock: 2 },
+        { size: 'S', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-S', price: 84900, stock: 6 },
+        { size: 'M', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-M', price: 84900, stock: 5 },
+        { size: 'L', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-L', price: 84900, stock: 2 },
+        { size: 'XL', color: 'Black', colorHex: '#1a1a1a', sku: 'MR-SWEATP-BLK-XL', price: 84900, stock: 2 },
       ],
     },
     {
@@ -51,10 +51,10 @@ async function main() {
       status: 'POS_ONLY',
       images: [],
       variants: [
-        { size: 'S', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-S', price: 35000, stock: 0 },
-        { size: 'M', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-M', price: 35000, stock: 3 },
-        { size: 'L', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-L', price: 35000, stock: 3 },
-        { size: 'XL', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-XL', price: 35000, stock: 3 },
+        { size: 'S', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-S', price: 44900, stock: 0 },
+        { size: 'M', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-M', price: 44900, stock: 3 },
+        { size: 'L', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-L', price: 44900, stock: 3 },
+        { size: 'XL', color: 'Grey', colorHex: '#8c8c8c', sku: 'MR-WAFSHORT-GRY-XL', price: 44900, stock: 3 },
       ],
     },
   ];
