@@ -1,7 +1,6 @@
-// Adds the Black Waffle Knit Shorts to the catalog, alongside the existing
-// Grey Waffle Short. Seeded as POS_ONLY (sellable at the in-store POS
-// terminal, hidden from the storefront) to match how the grey version was
-// added before going live.
+// Adds the Black Waffle Knit Shorts to the catalog, ACTIVE on the
+// storefront (unlike the still-photo-less Grey Waffle Short, which stays
+// POS_ONLY).
 //
 // Usage: node scripts/add-black-waffle-shorts.mjs
 // Safe to re-run: skipped (not duplicated) if the slug already exists.
@@ -20,7 +19,7 @@ async function main() {
     name: 'Black Waffle Knit Shorts',
     slug: 'black-waffle-knit-shorts',
     description: 'Waffle knit shorts in black.',
-    status: 'POS_ONLY',
+    status: 'ACTIVE',
     images: [
       { url: '/products/black-waffle-knit-shorts/02-front.png', altText: 'Black Waffle Knit Shorts — front', colorValue: 'Black' },
       { url: '/products/black-waffle-knit-shorts/01-back.jpg', altText: 'Black Waffle Knit Shorts — back', colorValue: 'Black' },
