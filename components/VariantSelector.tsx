@@ -123,7 +123,7 @@ export function VariantSelector({
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 48 }} className="product-detail-grid">
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
         <div
           onPointerDown={stopAutoplay}
           style={{
@@ -189,7 +189,7 @@ export function VariantSelector({
           )}
         </div>
         {galleryImages.length > 1 && (
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {galleryImages.map((img, i) => (
               <button
                 key={img.url + i}
@@ -197,6 +197,7 @@ export function VariantSelector({
                 style={{
                   width: 64,
                   height: 80,
+                  flexShrink: 0,
                   position: 'relative',
                   border: i === activeImageIndex ? '2px solid var(--accent)' : '1px solid var(--line)',
                   padding: 0,
