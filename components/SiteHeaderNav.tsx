@@ -79,6 +79,7 @@ export function SiteHeaderNav({
             {wishlistCount}
           </span>
         </Link>
+        <Link href="/track-order">Track Order</Link>
         <Link href={customerName ? '/account' : '/account/login'}>{customerName ? customerName.split(' ')[0] : 'Sign In'}</Link>
         {isAdmin && <Link href="/admin">Admin</Link>}
         <a className="mr-nav-cta" href="https://instagram.com/merriereg" target="_blank" rel="noopener">
@@ -116,6 +117,9 @@ export function SiteHeaderNav({
         </Link>
         <Link href="/wishlist" onClick={() => setMobileMenuOpen(false)}>
           Wishlist ({wishlistCount})
+        </Link>
+        <Link href="/track-order" onClick={() => setMobileMenuOpen(false)}>
+          Track Order
         </Link>
         <Link href={customerName ? '/account' : '/account/login'} onClick={() => setMobileMenuOpen(false)}>
           {customerName ? `Account (${customerName.split(' ')[0]})` : 'Sign In'}

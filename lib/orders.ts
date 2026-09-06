@@ -12,6 +12,8 @@ export class CheckoutError extends Error {
   }
 }
 
+export const ORDER_STATUS_STEPS = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] as const;
+
 export function generateOrderNumber(): string {
   const date = new Date();
   const y = date.getFullYear().toString().slice(-2);

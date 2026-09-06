@@ -3,11 +3,10 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { formatEGP } from '@/lib/money';
 import { getCurrentCustomer } from '@/lib/customer-auth';
+import { ORDER_STATUS_STEPS as STATUS_STEPS } from '@/lib/orders';
 
 export const metadata = { title: 'Order Confirmation' };
 export const dynamic = 'force-dynamic';
-
-const STATUS_STEPS = ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED'] as const;
 
 export default async function OrderConfirmationPage({
   params,

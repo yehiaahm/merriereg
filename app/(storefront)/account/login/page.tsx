@@ -65,6 +65,12 @@ function LoginForm() {
           Create an account
         </Link>
       </p>
+      <p style={{ marginTop: 8, fontSize: 14, color: 'var(--ink-soft)' }}>
+        Just checking an order?{' '}
+        <Link href="/track-order" style={{ color: 'var(--ink)', textDecoration: 'underline' }}>
+          Track it without signing in
+        </Link>
+      </p>
     </main>
   );
 }

@@ -69,6 +69,18 @@ export const customerLoginSchema = z.object({
   password: z.string().min(1),
 });
 
+export const trackOrderSchema = z.object({
+  orderNumber: z.string().trim().min(3).max(40),
+  phone: z.preprocess((val) => {
+    if (typeof val !== 'string') return val;
+    let cleaned = val.replace(/[\s\-()]/g, '');
+    if (cleaned.startsWith('+20')) cleaned = cleaned.slice(3);
+    else if (cleaned.startsWith('0020')) cleaned = cleaned.slice(4);
+    else if (cleaned.startsWith('+2')) cleaned = cleaned.slice(2);
+    return cleaned;
+  }, z.string().regex(/^01[0125][0-9]{8}$/, 'Enter a valid Egyptian phone number (e.g. 010xxxxxxxx or +2010xxxxxxxx)')),
+});
+
 export const variantInputSchema = z.object({
   id: z.string().optional(),
   size: z.string().trim().min(1).max(20),
