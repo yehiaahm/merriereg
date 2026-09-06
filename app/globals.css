@@ -1055,6 +1055,10 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  /* Grid items default to min-width: auto, which lets an input's intrinsic
+     width blow the two-column checkout rows out past the viewport on
+     mobile — min-width: 0 lets the field shrink to fit its track instead. */
+  min-width: 0;
 }
 .field label {
   font-size: 12px;
