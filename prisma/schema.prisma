@@ -185,12 +185,28 @@ model Order {
   customerEmail String?
 
   shippingGovernorate String
+  // Never collected from the customer directly (see requirement to drop the
+  // City field from Checkout) — always derived server-side from
+  // shippingGovernorate in lib/orders.ts, so this stays required.
   shippingCity        String
-  shippingArea        String
-  shippingStreet      String
-  shippingBuilding    String
+  // Nullable: populated from the manual-address fallback fields when the
+  // customer types an address, left null when they confirm a map location
+  // instead (see deliveryLat/deliveryLng/deliveryAddress below).
+  shippingArea        String?
+  shippingStreet      String?
+  shippingBuilding    String?
   shippingApartment   String?
   shippingNotes       String?
+
+  // Delivery Location picker (Checkout): set only when the customer confirms
+  // a map location, never populated automatically. Only saved to the order
+  // once the order is actually placed — see components/DeliveryLocationPicker.tsx.
+  deliveryLat     Float?
+  deliveryLng     Float?
+  // Reverse-geocoded human-readable address for the confirmed map location,
+  // via Nominatim (OpenStreetMap) — best-effort, may be null even when
+  // deliveryLat/deliveryLng are set if reverse geocoding failed.
+  deliveryAddress String?
 
   // All monetary fields in piastres.
   subtotal     Int

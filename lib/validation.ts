@@ -31,12 +31,23 @@ export const checkoutSchema = z.object({
   }, z.string().regex(/^01[0125][0-9]{8}$/, 'Enter a valid Egyptian phone number (e.g. 010xxxxxxxx or +2010xxxxxxxx)')),
   customerEmail: z.string().trim().toLowerCase().email().optional().or(z.literal('')),
   shippingGovernorate: z.enum(GOVERNORATES as unknown as [string, ...string[]]),
-  shippingCity: z.string().trim().min(1).max(120),
-  shippingArea: z.string().trim().min(1).max(120),
-  shippingStreet: z.string().trim().min(1).max(200),
-  shippingBuilding: z.string().trim().min(1).max(60),
+  // No shippingCity here — it's never collected from the customer (the City
+  // field was dropped from Checkout); lib/orders.ts derives it from
+  // shippingGovernorate. Manual address fields are optional at this level
+  // because a confirmed map location (deliveryLat/deliveryLng) is an
+  // acceptable substitute — see the superRefine below, which requires one or
+  // the other.
+  shippingArea: z.string().trim().max(120).optional().or(z.literal('')),
+  shippingStreet: z.string().trim().max(200).optional().or(z.literal('')),
+  shippingBuilding: z.string().trim().max(60).optional().or(z.literal('')),
   shippingApartment: z.string().trim().max(60).optional().or(z.literal('')),
   shippingNotes: z.string().trim().max(500).optional().or(z.literal('')),
+  // Delivery Location picker output. Coordinates are only ever present when
+  // the customer explicitly confirmed a location (see requirement 17 — never
+  // requested or saved without that confirmation).
+  deliveryLat: z.number().min(-90).max(90).optional(),
+  deliveryLng: z.number().min(-180).max(180).optional(),
+  deliveryAddress: z.string().trim().max(500).optional().or(z.literal('')),
   paymentMethod: z.enum(['COD', 'PAYMOB_CARD']),
   couponCode: z.string().trim().max(40).optional().or(z.literal('')),
 }).superRefine((data, ctx) => {
@@ -46,6 +57,18 @@ export const checkoutSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: 'Email is required for online card payment.',
       path: ['customerEmail'],
+    });
+  }
+
+  // The customer must provide a way to find them: either a confirmed map
+  // location, or a full manual address. Never both required at once.
+  const hasLocation = data.deliveryLat !== undefined && data.deliveryLng !== undefined;
+  const hasManualAddress = !!(data.shippingArea && data.shippingStreet && data.shippingBuilding);
+  if (!hasLocation && !hasManualAddress) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Use your current location, select it on the map, or enter your address manually.',
+      path: ['shippingStreet'],
     });
   }
 });
@@ -70,7 +93,11 @@ export const customerLoginSchema = z.object({
 });
 
 export const trackOrderSchema = z.object({
-  orderNumber: z.string().trim().min(3).max(40),
+  // Optional: when provided, tracking uses the original order-number+phone
+  // lookup (a specific, exact order). When omitted, tracking falls back to
+  // phone-only lookup — see app/api/track-order/route.ts for how each path
+  // bounds what it exposes.
+  orderNumber: z.string().trim().min(3).max(40).optional().or(z.literal('')),
   phone: z.preprocess((val) => {
     if (typeof val !== 'string') return val;
     let cleaned = val.replace(/[\s\-()]/g, '');

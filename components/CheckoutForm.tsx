@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { formatEGP } from '@/lib/money';
 import { SHIPPING_ZONES, calculateShippingCost } from '@/lib/shipping';
 import { calculateCartDiscount, tierDiscountDetailed, formatFreeItemsMessage } from '@/lib/promotions';
+import { DeliveryLocationPicker } from '@/components/DeliveryLocationPicker';
 
 type CartItem = {
   id: string;
@@ -69,17 +70,21 @@ export function CheckoutForm({
     setSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
+    const deliveryLat = formData.get('deliveryLat');
+    const deliveryLng = formData.get('deliveryLng');
     const payload = {
       customerName: String(formData.get('customerName') ?? ''),
       customerPhone: String(formData.get('customerPhone') ?? ''),
       customerEmail: String(formData.get('customerEmail') ?? ''),
       shippingGovernorate: governorate,
-      shippingCity: String(formData.get('shippingCity') ?? ''),
       shippingArea: String(formData.get('shippingArea') ?? ''),
       shippingStreet: String(formData.get('shippingStreet') ?? ''),
       shippingBuilding: String(formData.get('shippingBuilding') ?? ''),
       shippingApartment: String(formData.get('shippingApartment') ?? ''),
       shippingNotes: String(formData.get('shippingNotes') ?? ''),
+      deliveryLat: deliveryLat ? Number(deliveryLat) : undefined,
+      deliveryLng: deliveryLng ? Number(deliveryLng) : undefined,
+      deliveryAddress: String(formData.get('deliveryAddress') ?? ''),
       paymentMethod,
       couponCode,
     };
@@ -144,54 +149,33 @@ export function CheckoutForm({
         </fieldset>
 
         <fieldset style={{ border: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <legend style={{ fontFamily: 'var(--display)', fontSize: 22, marginBottom: 8 }}>Delivery Address</legend>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div className="field">
-              <label htmlFor="shippingGovernorate">Delivery Area</label>
-              <select
-                id="shippingGovernorate"
-                value={governorate}
-                onChange={(e) => setGovernorate(e.target.value)}
-              >
-                {SHIPPING_ZONES.map((zone) => (
-                  <optgroup key={zone.id} label={`${zone.label} — ${formatEGP(zone.rate)}`}>
-                    {zone.locations.map((location) => (
-                      <option key={location} value={location}>
-                        {location}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            <div className="field">
-              <label htmlFor="shippingCity">City</label>
-              <input id="shippingCity" name="shippingCity" required />
-            </div>
-          </div>
+          <legend style={{ fontFamily: 'var(--display)', fontSize: 22, marginBottom: 8 }}>Delivery Area</legend>
           <div className="field">
-            <label htmlFor="shippingArea">Area</label>
-            <input id="shippingArea" name="shippingArea" required />
-          </div>
-          <div className="field">
-            <label htmlFor="shippingStreet">Street</label>
-            <input id="shippingStreet" name="shippingStreet" required />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-            <div className="field">
-              <label htmlFor="shippingBuilding">Building</label>
-              <input id="shippingBuilding" name="shippingBuilding" required />
-            </div>
-            <div className="field">
-              <label htmlFor="shippingApartment">Apartment (optional)</label>
-              <input id="shippingApartment" name="shippingApartment" />
-            </div>
-          </div>
-          <div className="field">
-            <label htmlFor="shippingNotes">Delivery notes (optional)</label>
-            <textarea id="shippingNotes" name="shippingNotes" rows={2} />
+            <label htmlFor="shippingGovernorate">Delivery Area</label>
+            <select
+              id="shippingGovernorate"
+              value={governorate}
+              onChange={(e) => setGovernorate(e.target.value)}
+            >
+              {SHIPPING_ZONES.map((zone) => (
+                <optgroup key={zone.id} label={`${zone.label} — ${formatEGP(zone.rate)}`}>
+                  {zone.locations.map((location) => (
+                    <option key={location} value={location}>
+                      {location}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
         </fieldset>
+
+        <DeliveryLocationPicker />
+
+        <div className="field">
+          <label htmlFor="shippingNotes">Delivery notes (optional)</label>
+          <textarea id="shippingNotes" name="shippingNotes" rows={2} />
+        </div>
 
         <fieldset style={{ border: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <legend style={{ fontFamily: 'var(--display)', fontSize: 22, marginBottom: 8 }}>Payment</legend>

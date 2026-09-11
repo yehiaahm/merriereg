@@ -53,11 +53,16 @@ export async function POST(req: NextRequest) {
           // Validated as present by checkoutSchema's superRefine whenever paymentMethod is PAYMOB_CARD.
           email: input.customerEmail!,
           phone_number: input.customerPhone,
-          street: input.shippingStreet,
-          city: input.shippingCity,
+          // Street/building may be blank when the customer used the map
+          // location picker instead of typing a manual address — Paymob
+          // requires non-empty strings, so fall back to the reverse-geocoded
+          // address (or a generic placeholder) rather than the address
+          // fields, which were never collected in that case.
+          street: input.shippingStreet || input.deliveryAddress || 'See delivery location',
+          city: input.shippingGovernorate,
           country: 'EG',
           apartment: input.shippingApartment || 'NA',
-          building: input.shippingBuilding,
+          building: input.shippingBuilding || 'N/A',
         },
       });
       // Bind this order to Paymob's numeric order id BEFORE returning the

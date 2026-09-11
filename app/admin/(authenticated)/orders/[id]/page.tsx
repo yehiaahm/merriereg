@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { formatEGP } from '@/lib/money';
 import { OrderStatusUpdater } from '@/components/admin/OrderStatusUpdater';
+import { DeliveryLocationMap } from '@/components/admin/DeliveryLocationMap';
 
 export const metadata = { title: 'Admin — Order Detail' };
 export const dynamic = 'force-dynamic';
@@ -37,16 +38,42 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
           <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--ink-soft)' }}>{order.customerEmail || '—'}</p>
         </div>
         <div style={{ border: '1px solid var(--line)', padding: 16 }}>
-          <span className="eyebrow">Delivery Address</span>
-          <p style={{ margin: '6px 0', fontSize: 14 }}>
-            {order.shippingStreet}, {order.shippingBuilding}
-            {order.shippingApartment ? `, Apt ${order.shippingApartment}` : ''}
-            <br />
-            {order.shippingArea}, {order.shippingCity}, {order.shippingGovernorate}
-          </p>
+          <span className="eyebrow">Delivery Area</span>
+          <p style={{ margin: '6px 0', fontSize: 14 }}>{order.shippingGovernorate}</p>
+          {order.shippingStreet && order.shippingBuilding ? (
+            <p style={{ margin: '6px 0', fontSize: 14 }}>
+              {order.shippingStreet}, {order.shippingBuilding}
+              {order.shippingApartment ? `, Apt ${order.shippingApartment}` : ''}
+              {order.shippingArea ? <><br />{order.shippingArea}</> : null}
+            </p>
+          ) : order.deliveryAddress ? (
+            <p style={{ margin: '6px 0', fontSize: 14 }}>{order.deliveryAddress}</p>
+          ) : null}
           {order.shippingNotes && <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>Notes: {order.shippingNotes}</p>}
         </div>
       </div>
+
+      {order.deliveryLat !== null && order.deliveryLng !== null && (
+        <div style={{ border: '1px solid var(--line)', padding: 16, marginBottom: 28 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
+            <span className="eyebrow">Delivery Location</span>
+            <a
+              href={`https://www.google.com/maps?q=${order.deliveryLat},${order.deliveryLng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+              style={{ minHeight: 36, padding: '0 16px' }}
+            >
+              Open in Google Maps
+            </a>
+          </div>
+          <DeliveryLocationMap lat={order.deliveryLat} lng={order.deliveryLng} />
+          {order.deliveryAddress && <p style={{ margin: '10px 0 4px', fontSize: 14 }}>{order.deliveryAddress}</p>}
+          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--ink-soft)' }}>
+            {order.deliveryLat.toFixed(6)}, {order.deliveryLng.toFixed(6)}
+          </p>
+        </div>
+      )}
 
       <div style={{ border: '1px solid var(--line)', padding: 16, marginBottom: 28 }}>
         <span className="eyebrow">Payment</span>

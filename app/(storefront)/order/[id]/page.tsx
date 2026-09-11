@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { formatEGP } from '@/lib/money';
 import { getCurrentCustomer } from '@/lib/customer-auth';
-import { ORDER_STATUS_STEPS as STATUS_STEPS } from '@/lib/orders';
+import { OrderStatusTimeline } from '@/components/OrderStatusTimeline';
 
 export const metadata = { title: 'Order Confirmation' };
 export const dynamic = 'force-dynamic';
@@ -36,8 +36,8 @@ export default async function OrderConfirmationPage({
     }
   }
 
-  const isCancelled = order.status === 'CANCELLED';
-  const currentStepIndex = STATUS_STEPS.indexOf(order.status as (typeof STATUS_STEPS)[number]);
+  const hasManualAddress = !!(order.shippingStreet && order.shippingBuilding);
+  const hasDeliveryLocation = order.deliveryLat !== null && order.deliveryLng !== null;
 
   return (
     <main className="container" style={{ padding: '48px 24px 100px', maxWidth: 780, margin: '0 auto' }}>
@@ -52,24 +52,7 @@ export default async function OrderConfirmationPage({
       <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', margin: '8px 0 4px' }}>Thank you, {order.customerName.split(' ')[0]}.</h1>
       <p style={{ color: 'var(--ink-soft)', marginBottom: 32 }}>Order #{order.orderNumber}</p>
 
-      {!isCancelled && (
-        <div style={{ display: 'flex', gap: 4, marginBottom: 32 }}>
-          {STATUS_STEPS.map((step, i) => (
-            <div key={step} style={{ flex: 1 }}>
-              <div
-                style={{
-                  height: 4,
-                  background: i <= currentStepIndex ? 'var(--accent)' : 'var(--line)',
-                  marginBottom: 6,
-                }}
-              />
-              <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ink-soft)' }}>
-                {step}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      <OrderStatusTimeline status={order.status} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
         <div style={{ border: '1px solid var(--line)', padding: 18 }}>
@@ -80,12 +63,23 @@ export default async function OrderConfirmationPage({
           </p>
         </div>
         <div style={{ border: '1px solid var(--line)', padding: 18 }}>
-          <span className="eyebrow">Delivery Address</span>
+          <span className="eyebrow">Delivery Location</span>
           <p style={{ marginTop: 6, fontSize: 14 }}>
-            {order.shippingStreet}, {order.shippingBuilding}
-            {order.shippingApartment ? `, Apt ${order.shippingApartment}` : ''}
+            {order.shippingGovernorate}
             <br />
-            {order.shippingArea}, {order.shippingCity}, {order.shippingGovernorate}
+            {hasManualAddress ? (
+              <>
+                {order.shippingStreet}, {order.shippingBuilding}
+                {order.shippingApartment ? `, Apt ${order.shippingApartment}` : ''}
+                {order.shippingArea ? `, ${order.shippingArea}` : ''}
+              </>
+            ) : order.deliveryAddress ? (
+              order.deliveryAddress
+            ) : hasDeliveryLocation ? (
+              'Pinned on the map at checkout.'
+            ) : (
+              '—'
+            )}
           </p>
         </div>
       </div>

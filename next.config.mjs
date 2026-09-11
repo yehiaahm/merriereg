@@ -15,11 +15,14 @@ const CSP = [
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   // Google Fonts stylesheet, loaded via a <link> in app/layout.tsx.
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  // Product images are admin-pasted links to arbitrary hosts (see images.remotePatterns below).
+  // Product images are admin-pasted links to arbitrary hosts (see images.remotePatterns below);
+  // this also covers Leaflet's OpenStreetMap tile images for the Checkout/Admin delivery-location map.
   "img-src 'self' data: https:",
   // Google Fonts serves the actual font files from a separate host.
   "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self'",
+  // nominatim.openstreetmap.org: reverse-geocodes the Delivery Location picker's
+  // confirmed coordinates into a human-readable address (no API key needed).
+  "connect-src 'self' https://nominatim.openstreetmap.org",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -47,7 +50,10 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=(self)' },
+          // geolocation=(self): the Checkout's "Use My Current Location" button needs
+          // navigator.geolocation on our own origin — still opt-in only, the browser's
+          // own permission prompt gates every actual request (see DeliveryLocationPicker.tsx).
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self), payment=(self)' },
           { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
         ],
       },
