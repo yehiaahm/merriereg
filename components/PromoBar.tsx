@@ -1,8 +1,9 @@
 import { Fragment } from 'react';
 
 const PROMO_MESSAGES = [
-  'Buy 1, Get 1 Free',
-  'End of Season — Up to 70% Off',
+  '3 T-Shirts for 950 LE',
+  '3 Shorts for 700 LE',
+  '3 Pants for 1,500 LE',
   'Follow Us & Get 10% Off (Code: FOLLOW10)',
 ];
 

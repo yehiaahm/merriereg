@@ -5,61 +5,60 @@
 export const FOLLOW_DISCOUNT_CODE = 'FOLLOW10';
 export const FOLLOW_DISCOUNT_RATE = 0.1;
 
-export type PromoLine = { price: number; quantity: number };
-
-export type TierDiscount = {
-  freeCount: number;
-  amount: number;
-  label: string | null;
+export type BundleRule = {
+  categorySlug: string;
+  bundleSize: number;
+  /** Piastres. */
+  bundlePrice: number;
+  label: string;
 };
 
+// 3-for-a-fixed-price bundles, mix-and-match within a category (any color,
+// any size). Keyed by Category.slug — see scripts/setup-bundle-categories.mjs
+// for how the catalog is assigned into these three categories.
+export const BUNDLE_RULES: BundleRule[] = [
+  { categorySlug: 'pants', bundleSize: 3, bundlePrice: 150_000, label: '3 Pants for 1,500 LE' },
+  { categorySlug: 't-shirts', bundleSize: 3, bundlePrice: 95_000, label: '3 T-Shirts for 950 LE' },
+  { categorySlug: 'shorts', bundleSize: 3, bundlePrice: 70_000, label: '3 Shorts for 700 LE' },
+];
+
+export type PromoLine = { price: number; quantity: number; categorySlug: string | null };
+
+export type BundleGroup = { categorySlug: string; label: string; bundleCount: number; amount: number };
+export type BundleDiscount = { amount: number; groups: BundleGroup[] };
+
 /**
- * Buy 1 Get 1 Free, applied across the whole cart: for every 2 units in the
- * cart, the cheaper of the pair is free (e.g. 2 items -> 1 free, 4 items ->
- * 2 free).
+ * Mix-and-match bundle pricing: every complete set of `bundleSize` units
+ * within a category (any color/size combination) is charged at that rule's
+ * flat `bundlePrice` instead of the sum of their individual prices. Leftover
+ * units (fewer than bundleSize) are charged normally. The cheapest units are
+ * the ones folded into a bundle, so the reported savings is never overstated.
  */
-export function tierDiscount(items: PromoLine[]): TierDiscount {
-  const { freeCount, amount, label } = tierDiscountDetailed(
-    items.map((item, i) => ({ id: String(i), name: '', price: item.price, quantity: item.quantity }))
-  );
-  return { freeCount, amount, label };
-}
+export function bundleDiscount(items: PromoLine[]): BundleDiscount {
+  const groups: BundleGroup[] = [];
+  let amount = 0;
 
-export type PromoLineDetailed = { id: string; name: string; price: number; quantity: number };
-export type FreeGroup = { id: string; name: string; count: number };
-export type TierDiscountDetailed = TierDiscount & { freeGroups: FreeGroup[] };
+  for (const rule of BUNDLE_RULES) {
+    const unitPrices: number[] = [];
+    for (const item of items) {
+      if (item.categorySlug !== rule.categorySlug) continue;
+      for (let i = 0; i < item.quantity; i++) unitPrices.push(item.price);
+    }
 
-/** Same math as {@link tierDiscount}, but also reports which line(s) the free unit(s) come from, for "you got a free X" messaging. */
-export function tierDiscountDetailed(items: PromoLineDetailed[]): TierDiscountDetailed {
-  const units: { id: string; name: string; price: number }[] = [];
-  for (const item of items) {
-    for (let i = 0; i < item.quantity; i++) units.push({ id: item.id, name: item.name, price: item.price });
-  }
-  units.sort((a, b) => a.price - b.price);
-  const totalQty = units.length;
+    const bundleCount = Math.floor(unitPrices.length / rule.bundleSize);
+    if (bundleCount === 0) continue;
 
-  const freeCount = Math.floor(totalQty / 2);
-  const label = freeCount > 0 ? 'Buy 1 Get 1 Free' : null;
+    unitPrices.sort((a, b) => a - b);
+    const bundledUnits = unitPrices.slice(0, bundleCount * rule.bundleSize);
+    const bundledActualSum = bundledUnits.reduce((sum, p) => sum + p, 0);
+    const savings = Math.max(0, bundledActualSum - bundleCount * rule.bundlePrice);
+    if (savings === 0) continue;
 
-  const freeUnits = units.slice(0, freeCount);
-  const amount = freeUnits.reduce((sum, u) => sum + u.price, 0);
-
-  const groups = new Map<string, FreeGroup>();
-  for (const u of freeUnits) {
-    const g = groups.get(u.id) ?? { id: u.id, name: u.name, count: 0 };
-    g.count++;
-    groups.set(u.id, g);
+    groups.push({ categorySlug: rule.categorySlug, label: rule.label, bundleCount, amount: savings });
+    amount += savings;
   }
 
-  return { freeCount, amount, label, freeGroups: Array.from(groups.values()) };
-}
-
-/** "🎉 Buy 1 Get 1 Free — 2 × Black Tee are FREE!" — null when no tier is unlocked. */
-export function formatFreeItemsMessage(tier: TierDiscountDetailed): string | null {
-  if (tier.freeCount === 0 || !tier.label) return null;
-  const parts = tier.freeGroups.map((g) => (g.count > 1 ? `${g.count} × ${g.name}` : g.name));
-  const verb = tier.freeCount > 1 ? 'are FREE' : 'is FREE';
-  return `${tier.label} — ${parts.join(' + ')} ${verb}!`;
+  return { amount, groups };
 }
 
 export function normalizeCouponCode(code: string | null | undefined): string {
@@ -72,28 +71,28 @@ export function isFollowCouponValid(code: string | null | undefined): boolean {
 
 export type CartDiscount = {
   subtotal: number;
-  tierAmount: number;
-  tierLabel: string | null;
+  bundleAmount: number;
+  bundleGroups: BundleGroup[];
   couponApplied: boolean;
   couponAmount: number;
   totalDiscount: number;
   total: number;
 };
 
-/** Applies the quantity-tier discount first, then 10% off the remainder for a valid FOLLOW10 code. */
+/** Applies category bundle pricing first, then 10% off the remainder for a valid FOLLOW10 code. */
 export function calculateCartDiscount(items: PromoLine[], couponCode?: string | null): CartDiscount {
   const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const tier = tierDiscount(items);
-  const afterTier = subtotal - tier.amount;
+  const bundle = bundleDiscount(items);
+  const afterBundle = subtotal - bundle.amount;
 
   const couponApplied = isFollowCouponValid(couponCode);
-  const couponAmount = couponApplied ? Math.round(afterTier * FOLLOW_DISCOUNT_RATE) : 0;
+  const couponAmount = couponApplied ? Math.round(afterBundle * FOLLOW_DISCOUNT_RATE) : 0;
 
-  const totalDiscount = tier.amount + couponAmount;
+  const totalDiscount = bundle.amount + couponAmount;
   return {
     subtotal,
-    tierAmount: tier.amount,
-    tierLabel: tier.label,
+    bundleAmount: bundle.amount,
+    bundleGroups: bundle.groups,
     couponApplied,
     couponAmount,
     totalDiscount,

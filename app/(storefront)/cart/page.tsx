@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getCurrentCart, cartTotals } from '@/lib/cart';
 import { formatEGP } from '@/lib/money';
-import { tierDiscountDetailed, formatFreeItemsMessage } from '@/lib/promotions';
+import { bundleDiscount } from '@/lib/promotions';
 import { CartItemRow } from '@/components/CartItemRow';
 
 export const metadata = { title: 'Your Cart' };
@@ -11,16 +11,13 @@ export default async function CartPage() {
   const cart = await getCurrentCart();
   const items = cart?.items ?? [];
   const { subtotal } = cartTotals({ items });
-  const tier = tierDiscountDetailed(
+  const bundle = bundleDiscount(
     items.map((item) => ({
-      id: item.id,
-      name: item.variant.product.name,
       price: item.variant.price,
       quantity: item.quantity,
+      categorySlug: item.variant.product.category?.slug ?? null,
     }))
   );
-  const freeMessage = formatFreeItemsMessage(tier);
-  const freeCountByItemId = new Map(tier.freeGroups.map((g) => [g.id, g.count]));
 
   return (
     <main className="container" style={{ padding: '48px 24px 100px' }}>
@@ -36,7 +33,7 @@ export default async function CartPage() {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 48 }} className="product-detail-grid">
           <div>
-            {freeMessage && (
+            {bundle.groups.length > 0 && (
               <div
                 style={{
                   background: 'var(--accent)',
@@ -47,11 +44,11 @@ export default async function CartPage() {
                   fontSize: 14,
                 }}
               >
-                🎉 {freeMessage}
+                🎉 {bundle.groups.map((g) => g.label).join(' + ')}
               </div>
             )}
             {items.map((item) => (
-              <CartItemRow key={item.id} item={item} freeCount={freeCountByItemId.get(item.id) ?? 0} />
+              <CartItemRow key={item.id} item={item} />
             ))}
           </div>
           <div>
@@ -60,8 +57,9 @@ export default async function CartPage() {
                 <span>Subtotal</span>
                 <span style={{ fontWeight: 700 }}>{formatEGP(subtotal)}</span>
               </div>
-              {tier.amount > 0 && (
+              {bundle.groups.map((g) => (
                 <div
+                  key={g.categorySlug}
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -69,12 +67,10 @@ export default async function CartPage() {
                     color: 'var(--accent)',
                   }}
                 >
-                  <span>
-                    {tier.freeCount} free item{tier.freeCount > 1 ? 's' : ''} ({tier.label})
-                  </span>
-                  <span style={{ fontWeight: 700 }}>-{formatEGP(tier.amount)}</span>
+                  <span>{g.label}</span>
+                  <span style={{ fontWeight: 700 }}>-{formatEGP(g.amount)}</span>
                 </div>
-              )}
+              ))}
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 20 }}>
                 Shipping calculated at checkout. Have a promo code? Enter it at checkout.
               </p>

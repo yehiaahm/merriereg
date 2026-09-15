@@ -12,7 +12,7 @@ export interface BestSellingProduct {
 }
 
 /**
- * An order's flat, un-allocated discount (Order.discount — tier promo and/or
+ * An order's flat, un-allocated discount (Order.discount — bundle promo and/or
  * coupon, see lib/orders.ts) prorated onto one line item, so per-product and
  * per-category revenue reconcile with the order-level revenue KPI instead of
  * quietly reporting pre-discount gross. Falls back to the raw line subtotal

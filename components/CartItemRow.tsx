@@ -19,7 +19,7 @@ type Item = {
   };
 };
 
-export function CartItemRow({ item, freeCount = 0 }: { item: Item; freeCount?: number }) {
+export function CartItemRow({ item }: { item: Item }) {
   const router = useRouter();
   const { show, Toast } = useToast();
   const [busy, setBusy] = useState(false);
@@ -66,21 +66,6 @@ export function CartItemRow({ item, freeCount = 0 }: { item: Item; freeCount?: n
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ fontWeight: 700 }}>{item.variant.product.name}</div>
-          {freeCount > 0 && (
-            <span
-              style={{
-                fontSize: 10,
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                background: 'var(--accent)',
-                color: 'var(--cream)',
-                padding: '2px 6px',
-              }}
-            >
-              {freeCount > 1 ? `${freeCount} FREE` : '1 FREE'}
-            </span>
-          )}
         </div>
         <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
           {item.variant.color} / {item.variant.size}
@@ -123,18 +108,7 @@ export function CartItemRow({ item, freeCount = 0 }: { item: Item; freeCount?: n
           </button>
         </div>
       </div>
-      <div style={{ fontWeight: 700, textAlign: 'right' }}>
-        {freeCount > 0 ? (
-          <>
-            <div style={{ fontSize: 12, color: 'var(--ink-soft)', textDecoration: 'line-through', fontWeight: 400 }}>
-              {formatEGP(item.variant.price * item.quantity)}
-            </div>
-            <div>{formatEGP(item.variant.price * (item.quantity - freeCount))}</div>
-          </>
-        ) : (
-          formatEGP(item.variant.price * item.quantity)
-        )}
-      </div>
+      <div style={{ fontWeight: 700, textAlign: 'right' }}>{formatEGP(item.variant.price * item.quantity)}</div>
       {Toast}
     </div>
   );

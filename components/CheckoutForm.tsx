@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatEGP } from '@/lib/money';
 import { SHIPPING_ZONES, calculateShippingCost } from '@/lib/shipping';
-import { calculateCartDiscount, tierDiscountDetailed, formatFreeItemsMessage } from '@/lib/promotions';
+import { calculateCartDiscount } from '@/lib/promotions';
 import { DeliveryLocationPicker } from '@/components/DeliveryLocationPicker';
 
 type CartItem = {
@@ -15,7 +15,7 @@ type CartItem = {
     price: number;
     size: string;
     color: string;
-    product: { name: string; images: { url: string }[] };
+    product: { name: string; images: { url: string }[]; category: { slug: string } | null };
   };
 };
 
@@ -42,26 +42,17 @@ export function CheckoutForm({
   const discount = useMemo(
     () =>
       calculateCartDiscount(
-        items.map((item) => ({ price: item.variant.price, quantity: item.quantity })),
+        items.map((item) => ({
+          price: item.variant.price,
+          quantity: item.quantity,
+          categorySlug: item.variant.product.category?.slug ?? null,
+        })),
         couponCode
       ),
     [items, couponCode]
   );
   const couponEntered = couponCode.trim().length > 0;
-  const tier = useMemo(
-    () =>
-      tierDiscountDetailed(
-        items.map((item) => ({
-          id: item.id,
-          name: item.variant.product.name,
-          price: item.variant.price,
-          quantity: item.quantity,
-        }))
-      ),
-    [items]
-  );
-  const freeMessage = formatFreeItemsMessage(tier);
-  const freeCountByItemId = useMemo(() => new Map(tier.freeGroups.map((g) => [g.id, g.count])), [tier]);
+  const bundleMessage = discount.bundleGroups.length > 0 ? discount.bundleGroups.map((g) => g.label).join(' + ') : null;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -223,7 +214,7 @@ export function CheckoutForm({
       <div>
         <div style={{ border: '1px solid var(--line)', padding: 24, background: 'var(--cream-2)', position: 'sticky', top: 90 }}>
           <h2 style={{ fontSize: 18, marginBottom: 16 }}>Order Summary</h2>
-          {freeMessage && (
+          {bundleMessage && (
             <div
               style={{
                 background: 'var(--accent)',
@@ -234,26 +225,17 @@ export function CheckoutForm({
                 fontSize: 13,
               }}
             >
-              🎉 {freeMessage}
+              🎉 {bundleMessage}
             </div>
           )}
-          {items.map((item) => {
-            const itemFreeCount = freeCountByItemId.get(item.id) ?? 0;
-            return (
-              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
-                <span>
-                  {item.variant.product.name} ({item.variant.color}/{item.variant.size}) &times; {item.quantity}
-                  {itemFreeCount > 0 && (
-                    <span style={{ color: 'var(--accent)', fontWeight: 700 }}>
-                      {' '}
-                      ({itemFreeCount} FREE)
-                    </span>
-                  )}
-                </span>
-                <span>{formatEGP(item.variant.price * item.quantity)}</span>
-              </div>
-            );
-          })}
+          {items.map((item) => (
+            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
+              <span>
+                {item.variant.product.name} ({item.variant.color}/{item.variant.size}) &times; {item.quantity}
+              </span>
+              <span>{formatEGP(item.variant.price * item.quantity)}</span>
+            </div>
+          ))}
           <div className="field" style={{ marginBottom: 4 }}>
             <label htmlFor="couponCode">Promo code (optional)</label>
             <input
@@ -282,14 +264,12 @@ export function CheckoutForm({
               <span>Subtotal</span>
               <span>{formatEGP(subtotal)}</span>
             </div>
-            {discount.tierAmount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: 'var(--accent)' }}>
-                <span>
-                  {tier.freeCount} free item{tier.freeCount > 1 ? 's' : ''} ({discount.tierLabel})
-                </span>
-                <span>-{formatEGP(discount.tierAmount)}</span>
+            {discount.bundleGroups.map((g) => (
+              <div key={g.categorySlug} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: 'var(--accent)' }}>
+                <span>{g.label}</span>
+                <span>-{formatEGP(g.amount)}</span>
               </div>
-            )}
+            ))}
             {discount.couponApplied && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: 'var(--accent)' }}>
                 <span>Follower discount (10%)</span>

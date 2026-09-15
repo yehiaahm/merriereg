@@ -9,7 +9,7 @@ export const cartInclude = {
     include: {
       variant: {
         include: {
-          product: { include: { images: { orderBy: { position: 'asc' as const } } } },
+          product: { include: { images: { orderBy: { position: 'asc' as const } }, category: true } },
         },
       },
     },

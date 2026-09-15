@@ -56,11 +56,14 @@ export async function createOrderFromCart(cart: CartWithItems, input: CheckoutIn
       quantity: number;
       subtotal: number;
     }[] = [];
+    const discountLines: { price: number; quantity: number; categorySlug: string | null }[] = [];
 
     for (const item of cart.items) {
       const variant = await tx.productVariant.findUnique({
         where: { id: item.variantId },
-        include: { product: { include: { images: { orderBy: { position: 'asc' }, take: 1 } } } },
+        include: {
+          product: { include: { images: { orderBy: { position: 'asc' }, take: 1 }, category: true } },
+        },
       });
 
       if (!variant || !variant.active || variant.product.status !== 'ACTIVE') {
@@ -84,6 +87,7 @@ export async function createOrderFromCart(cart: CartWithItems, input: CheckoutIn
 
       const lineSubtotal = variant.price * item.quantity;
       subtotal += lineSubtotal;
+      discountLines.push({ price: variant.price, quantity: item.quantity, categorySlug: variant.product.category?.slug ?? null });
       orderItemsData.push({
         variantId: variant.id,
         productName: variant.product.name,
@@ -101,10 +105,7 @@ export async function createOrderFromCart(cart: CartWithItems, input: CheckoutIn
       throw new CheckoutError('That promo code is not valid.');
     }
 
-    const promo = calculateCartDiscount(
-      orderItemsData.map((item) => ({ price: item.unitPrice, quantity: item.quantity })),
-      input.couponCode
-    );
+    const promo = calculateCartDiscount(discountLines, input.couponCode);
     const discount = promo.totalDiscount;
     const couponCode = promo.couponApplied ? input.couponCode!.trim().toUpperCase() : null;
 
