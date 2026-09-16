@@ -102,6 +102,16 @@ export function ProductForm({
     setImages((prev) => prev.map((img, i) => (i === index ? { ...img, ...patch } : img)));
   }
 
+  function moveImage(index: number, direction: -1 | 1) {
+    setImages((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
   async function handleImageFile(index: number, file: File | undefined) {
     if (!file) return;
     setError(null);
@@ -250,12 +260,38 @@ export function ProductForm({
         <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10 }}>
           Choose an image straight from your computer, or paste a URL if it&apos;s already hosted somewhere (e.g. an
           image CDN). Optionally tag an image with a color so it swaps automatically when that color is selected.
+          Images appear on the site in the order listed here — use the arrows to put on-model photos first, followed
+          by plain product shots.
         </p>
         {images.map((img, i) => (
           <div
             key={i}
             style={{ display: 'flex', gap: 12, alignItems: 'flex-start', border: '1px solid var(--line)', padding: 12, marginBottom: 8 }}
           >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flexShrink: 0 }}>
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ minHeight: 28, padding: '0 8px', lineHeight: 1 }}
+                onClick={() => moveImage(i, -1)}
+                disabled={i === 0}
+                aria-label="Move image up"
+                title="Move up"
+              >
+                ↑
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ minHeight: 28, padding: '0 8px', lineHeight: 1 }}
+                onClick={() => moveImage(i, 1)}
+                disabled={i === images.length - 1}
+                aria-label="Move image down"
+                title="Move down"
+              >
+                ↓
+              </button>
+            </div>
             {img.url && (
               // eslint-disable-next-line @next/next/no-img-element -- preview of an in-memory/data-URL or arbitrary pasted URL, not worth next/image's optimization pipeline
               <img
