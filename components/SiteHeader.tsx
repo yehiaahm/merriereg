@@ -10,7 +10,7 @@ export async function SiteHeader() {
   const wishlistCount = wishlist?.items.length ?? 0;
 
   return (
-    <>
+    <div className="mr-site-header">
       <PromoBar />
       <SiteHeaderNav
         itemCount={itemCount}
@@ -18,6 +18,6 @@ export async function SiteHeader() {
         customerName={customer?.name ?? null}
         isAdmin={customer?.isAdmin ?? false}
       />
-    </>
+    </div>
   );
 }

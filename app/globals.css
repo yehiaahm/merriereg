@@ -180,9 +180,14 @@ textarea {
 }
 
 /* ---- Nav Header ---- */
-.mr-nav {
+/* Promo bar + nav stick together so offers stay visible while scrolling. */
+.mr-site-header {
   position: sticky;
   top: 0;
+  z-index: 50;
+}
+.mr-nav {
+  position: relative;
   z-index: 50;
   display: flex;
   flex-wrap: wrap;
