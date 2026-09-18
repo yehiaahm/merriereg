@@ -20,12 +20,14 @@ html {
   scroll-behavior: smooth;
 }
 
-html,
-body {
+/* Only html clips horizontal overflow; `hidden` on body too would make body a
+   scroll container and break position: sticky on the header. */
+html {
   overflow-x: hidden;
 }
 
 body {
+  overflow-x: clip;
   margin: 0;
   padding: 0;
   background: var(--cream);
