@@ -136,7 +136,13 @@ export const productInputSchema = z.object({
   images: z
     .array(
       z.object({
-        url: z.string().url(),
+        // Absolute URLs, data: URLs (admin uploads), or site-relative paths
+        // like /products/x.jpg (seeded images) — z.string().url() rejects the last.
+        url: z
+          .string()
+          .trim()
+          .min(1)
+          .refine((v) => v.startsWith('/') || /^(https?|data):/i.test(v), 'Image must be a URL, uploaded file, or /path'),
         altText: z.string().optional(),
         colorValue: z.string().optional(),
       })
