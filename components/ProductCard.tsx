@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { formatEGP } from '@/lib/money';
 import { useWishlistToggle } from '@/components/useWishlistToggle';
 import { useToast } from '@/components/AddToCartError';
+import { flyToCart } from '@/lib/fly-to-cart';
 
 type CardVariant = {
   id: string;
@@ -71,6 +72,7 @@ export function ProductCard({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState<string | null>(null);
   const [justAdded, setJustAdded] = useState<string | null>(null);
+  const mediaRef = useRef<HTMLDivElement>(null);
 
   const sizes = variants.filter((v) => v.color === color);
   const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
@@ -106,7 +108,8 @@ export function ProductCard({
       }
       show(`Added ${product.name} (${variant.color} / ${variant.size}) to cart.`);
       setJustAdded(variant.id);
-      router.refresh();
+      // The cart counts refresh as the product lands in the cart icon.
+      flyToCart(mediaRef.current).then(() => router.refresh());
       setTimeout(() => {
         setJustAdded(null);
         setOpen(false);
@@ -128,7 +131,7 @@ export function ProductCard({
           if (e.key === 'Escape') setOpen(false);
         }}
       >
-        <div className="mr-pcard-media">
+        <div className="mr-pcard-media" ref={mediaRef}>
           <Link href={href} className="mr-pcard-imglink" tabIndex={-1} aria-hidden="true">
             {primary ? (
               <>

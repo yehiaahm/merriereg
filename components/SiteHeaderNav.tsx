@@ -32,6 +32,7 @@ export function SiteHeaderNav({
         <Link href="/products">Shop</Link>
         <Link
           href="/cart"
+          data-cart-target
           style={{
             display: 'inline-flex',
             alignItems: 'center',
@@ -60,17 +61,33 @@ export function SiteHeaderNav({
         </a>
       </div>
 
-      <button
-        className={`mr-menu-btn ${mobileMenuOpen ? 'mr-menu-btn--open' : ''}`}
-        id="mrMenuBtn"
-        aria-label="Toggle menu"
-        aria-expanded={mobileMenuOpen}
-        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-      >
-        <span />
-        <span />
-        <span />
-      </button>
+      <div className="mr-nav-actions">
+        <Link href="/cart" className="mr-nav-cart" data-cart-target aria-label={`Cart, ${itemCount} ${itemCount === 1 ? 'item' : 'items'}`}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M5.2 8.2h13.6l-1 11.2a1.5 1.5 0 0 1-1.5 1.35H7.7a1.5 1.5 0 0 1-1.5-1.35L5.2 8.2Z"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+            <path d="M9 10.5V7a3 3 0 0 1 6 0v3.5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
+          <span className={`mr-nav-count${itemCount > 0 ? ' mr-nav-count--active' : ''}`} aria-hidden="true">
+            {itemCount}
+          </span>
+        </Link>
+        <button
+          className={`mr-menu-btn ${mobileMenuOpen ? 'mr-menu-btn--open' : ''}`}
+          id="mrMenuBtn"
+          aria-label="Toggle menu"
+          aria-expanded={mobileMenuOpen}
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+      </div>
 
       <div className={`mr-mobile-menu ${mobileMenuOpen ? 'mr-mobile-menu--open' : ''}`} id="mrMobileMenu">
         <Link href="/" onClick={() => setMobileMenuOpen(false)}>

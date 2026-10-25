@@ -358,6 +358,81 @@ textarea {
   color: var(--cream);
 }
 
+/* Mobile/tablet: the desktop links are hidden, so the bar gets its own cart icon next to the menu. */
+.mr-nav-actions {
+  display: none;
+  align-items: center;
+  gap: 14px;
+}
+.mr-nav-cart {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--ink);
+  transition: color 0.3s ease;
+}
+.mr-nav-cart:hover {
+  color: var(--ink);
+}
+.mr-nav-cart .mr-nav-count {
+  position: absolute;
+  top: -1px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  font-size: 9px;
+  font-weight: 700;
+}
+.mr-nav-cart:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Add-to-cart landing feedback (see lib/fly-to-cart.ts): the cart nudges and the badge pops. */
+.mr-cart-bump {
+  animation: mr-cart-bump 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+.mr-cart-bump .mr-nav-count {
+  animation: mr-count-pop 0.6s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+}
+@keyframes mr-cart-bump {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.14);
+  }
+}
+@keyframes mr-count-pop {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.55);
+  }
+}
+@keyframes mr-cart-flash {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  35% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mr-cart-bump,
+  .mr-cart-bump .mr-nav-count {
+    animation: mr-cart-flash 0.6s ease;
+  }
+}
+
 /* Homepage: the nav floats transparently over the video hero until the page scrolls
    (data-overlay is set by SiteHeaderNav, mr-nav--scrolled by ScrollAnimationHandler). */
 .mr-nav[data-overlay='true']:not(.mr-nav--scrolled) {
@@ -365,6 +440,7 @@ textarea {
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-cart,
 .mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-wordmark,
 .mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-links a,
 .mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-links a:hover {
@@ -2364,6 +2440,9 @@ table.admin-table th[aria-sort] a {
   }
   .mr-nav-links {
     display: none;
+  }
+  .mr-nav-actions {
+    display: flex;
   }
   .mr-menu-btn {
     display: flex;

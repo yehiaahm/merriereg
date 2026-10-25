@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatEGP } from '@/lib/money';
 import { useToast } from '@/components/AddToCartError';
+import { flyToCart } from '@/lib/fly-to-cart';
 import { SizeFinder } from '@/components/SizeFinder';
 import type { SizeChartData } from '@/lib/sizing/measurements';
 
@@ -36,6 +37,7 @@ export function VariantSelector({
 }) {
   const router = useRouter();
   const { show, Toast } = useToast();
+  const galleryRef = useRef<HTMLDivElement>(null);
 
   const colors = useMemo(() => Array.from(new Set(variants.map((v) => v.color))), [variants]);
   const [selectedColor, setSelectedColor] = useState(colors[0] ?? '');
@@ -131,7 +133,8 @@ export function VariantSelector({
         router.push('/checkout');
       } else {
         show(`Added ${productName} (${selectedVariant.color} / ${selectedVariant.size}) to cart.`);
-        router.refresh();
+        // The cart counts refresh as the product lands in the cart icon.
+        flyToCart(galleryRef.current).then(() => router.refresh());
       }
     } catch {
       show('Network error — please try again.', 'error');
@@ -145,6 +148,7 @@ export function VariantSelector({
     <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 48 }} className="product-detail-grid">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
         <div
+          ref={galleryRef}
           onPointerDown={stopAutoplay}
           style={{
             position: 'relative',
