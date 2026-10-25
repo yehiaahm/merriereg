@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { listActiveProducts } from '@/lib/products';
 import { getCurrentWishlist, wishlistedProductIds } from '@/lib/wishlist';
 import { ProductCard } from '@/components/ProductCard';
-import { FeaturedProductShowcase } from '@/components/FeaturedProductShowcase';
 import { HeroVideo } from '@/components/HeroVideo';
 import { MarqueeStrip } from '@/components/MarqueeStrip';
 
@@ -60,40 +59,19 @@ export default async function HomePage() {
       {/* 2. MIDDLE MARQUEE TICKER */}
       <MarqueeStrip />
 
-      {/* 3. SHOWCASE / COLLECTION SECTION (LIVE PRODUCTS FROM DATABASE) */}
+      {/* 3. COLLECTION (LIVE PRODUCTS FROM DATABASE) */}
       <section className="mr-showcase" id="collection">
         <div className="mr-container">
-          {featured[0] ? (
-            <FeaturedProductShowcase
-              badgeLabel="Coming This Winter"
-              heading="The New Era"
-              lede="A new chapter of elevated essentials and statement silhouettes — the piece that opens the MERRIER winter lineup."
-              product={featured[0]}
-              isWishlisted={wishlistedIds.has(featured[0].id)}
-            />
-          ) : (
-            <div className="mr-showcase-head">
-              <div className="reveal" data-reveal>
-                <span className="mr-badge">
-                  <i />
-                  Coming This Winter
-                </span>
-                <h2 className="mr-h2" style={{ marginTop: 18 }}>
-                  The New Era
-                </h2>
-              </div>
-              <p className="mr-lede reveal" data-reveal style={{ paddingBottom: 6 }}>
-                New arrivals are on their way — check back soon.
-              </p>
-            </div>
-          )}
-
-          {featured.length > 1 && (
-            <div className="mr-product-grid" style={{ marginTop: 64 }}>
-              {featured.slice(1).map((product) => (
+          {featured.length > 0 ? (
+            <div className="mr-product-grid">
+              {featured.map((product) => (
                 <ProductCard key={product.id} product={product} isWishlisted={wishlistedIds.has(product.id)} />
               ))}
             </div>
+          ) : (
+            <p className="mr-lede reveal" data-reveal>
+              New arrivals are on their way &mdash; check back soon.
+            </p>
           )}
 
           {products.length > 8 && (
