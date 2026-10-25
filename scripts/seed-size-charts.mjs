@@ -34,6 +34,21 @@ async function main() {
       : await prisma.sizeChart.create({ data });
     console.log(`${existing ? 'Updated' : 'Created'} size chart "${chart.name}".`);
 
+    // Per-product assignment. Products that don't exist yet are skipped (run
+    // this script again after adding them); a product that already has a chart
+    // of its own is never overridden.
+    for (const slug of c.productSlugs ?? []) {
+      const product = await prisma.product.findUnique({ where: { slug }, select: { id: true, sizeChartId: true } });
+      if (!product) {
+        console.log(`  Product "${slug}" not found yet — skipped.`);
+      } else if (product.sizeChartId && product.sizeChartId !== chart.id) {
+        console.log(`  Product "${slug}" already uses another size chart — left unchanged.`);
+      } else {
+        await prisma.product.update({ where: { id: product.id }, data: { sizeChartId: chart.id } });
+        console.log(`  Product "${slug}" now uses this chart.`);
+      }
+    }
+
     for (const slug of c.categorySlugs) {
       const category = await prisma.category.findUnique({ where: { slug } });
       if (!category) {

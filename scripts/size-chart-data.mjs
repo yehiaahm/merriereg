@@ -41,8 +41,20 @@ export const SIZE_CHARTS = [
   },
   {
     name: 'Hoodie (height suggestion)',
-    // No MERRIER hoodie exists yet, so this isn't assigned to anything.
+    // Hoodies and crewnecks live in different categories, so this chart is
+    // assigned per product (by slug) instead of per category. The boxy-fit
+    // crewnecks share the hoodies' cut. NOT included on purpose: the DEATH and
+    // OVERDOSE hoodies (different garment and price point, no chart supplied).
     categorySlugs: [],
+    productSlugs: [
+      'elegance-in-scilence-regular-shoulder-boxy-fit-hoodie',
+      'im-not-even-in-my-prime-yet-boxy-fit-hoodie',
+      'ive-been-ghosting-you-cuz-im-working-boxy-fit-hoodie',
+      'i-see-my-momma-smile-thats-a-blessin-regular-shoulder-boxy-fit-hoodie',
+      'im-not-even-in-my-prime-yet-boxy-fit-crewneck',
+      'im-not-even-in-my-prime-yet-boxy-fit-crewneck-v2',
+      'ive-been-ghosting-you-cuz-im-working-boxy-fit-crewneck',
+    ],
     basis: 'GARMENT',
     // The chest figures (57–69 cm) are half-circumferences, i.e. measured flat.
     garmentFlat: true,
