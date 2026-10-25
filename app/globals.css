@@ -872,71 +872,6 @@ textarea {
   justify-content: center;
 }
 
-/* ---- About Section (24 Watermark) ---- */
-.mr-about {
-  background: var(--ink);
-  color: var(--cream);
-  padding: 100px 0;
-  position: relative;
-  overflow: hidden;
-}
-.mr-about-num {
-  position: absolute;
-  right: -4vw;
-  top: 50%;
-  transform: translateY(-50%);
-  font-family: var(--display);
-  font-size: min(46vw, 500px);
-  line-height: 1;
-  color: rgba(236, 229, 216, 0.04);
-  user-select: none;
-  pointer-events: none;
-}
-.mr-about-grid {
-  display: grid;
-  grid-template-columns: 1.3fr 0.9fr;
-  gap: 50px;
-  align-items: start;
-  position: relative;
-  z-index: 1;
-}
-.mr-about-quote {
-  font-family: var(--display);
-  font-weight: 400;
-  text-transform: uppercase;
-  letter-spacing: 0.005em;
-  font-size: clamp(28px, 3.8vw, 48px);
-  line-height: 1.1;
-  margin: 0;
-}
-.mr-about-quote em {
-  font-style: normal;
-  color: var(--accent-soft);
-}
-.mr-about-side {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  padding-top: 10px;
-}
-.mr-about-row {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-  padding-top: 18px;
-  border-top: 1px solid rgba(236, 229, 216, 0.16);
-}
-.mr-about-row .mr-eyebrow {
-  color: var(--accent-soft);
-  min-width: 90px;
-}
-.mr-about-row p {
-  margin: 0;
-  font-size: 14px;
-  color: rgba(236, 229, 216, 0.8);
-  line-height: 1.6;
-}
-
 /* ---- CTA Section ---- */
 .mr-cta {
   padding: 100px 0 90px;
@@ -1690,13 +1625,6 @@ table.admin-table th[aria-sort] a {
   }
   .mr-feature-actions .mr-btn-ghost {
     padding: 12px 0;
-  }
-  .mr-about {
-    padding: 70px 0;
-  }
-  .mr-about-grid {
-    grid-template-columns: 1fr;
-    gap: 30px;
   }
   .mr-cta {
     padding: 70px 0 60px;

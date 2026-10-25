@@ -26,7 +26,6 @@ export function SiteHeaderNav({
       <div className="mr-nav-links">
         <Link href="/#collection">Collection</Link>
         <Link href="/products">Shop</Link>
-        <Link href="/#about">The Brand</Link>
         <Link
           href="/cart"
           style={{
@@ -108,9 +107,6 @@ export function SiteHeaderNav({
         </Link>
         <Link href="/#collection" onClick={() => setMobileMenuOpen(false)}>
           Collection
-        </Link>
-        <Link href="/#about" onClick={() => setMobileMenuOpen(false)}>
-          The Brand
         </Link>
         <Link href="/cart" onClick={() => setMobileMenuOpen(false)}>
           Cart ({itemCount})

@@ -22,7 +22,6 @@ export function SiteFooter() {
             </div>
             <div className="mr-footer-col">
               <span className="mr-eyebrow">Brand</span>
-              <Link href="/#about">The Brand</Link>
               <a href="https://instagram.com/merriereg" target="_blank" rel="noopener">
                 Instagram
               </a>

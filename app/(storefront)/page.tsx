@@ -111,35 +111,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 4. ABOUT BRAND STORY SECTION (WITH WATERMARK 24) */}
-      <section className="mr-about" id="about">
-        <div className="mr-about-num">24</div>
-        <div className="mr-container mr-about-grid">
-          <p className="mr-h2 mr-about-quote reveal" data-reveal>
-            Merrier is built for those who dress with <em>intention</em> — essentials with an edge, made for the
-            everyday and the extraordinary.
-          </p>
-          <div className="mr-about-side reveal" data-reveal>
-            <div className="mr-about-row">
-              <span className="mr-eyebrow">Founded</span>
-              <p>
-                Started in 2024 as a small drop-based label — every piece designed around a single idea: choose your
-                Merrier.
-              </p>
-            </div>
-            <div className="mr-about-row">
-              <span className="mr-eyebrow">Approach</span>
-              <p>Essentials-first. Fewer pieces, made with weight, cut and fabric that hold up to daily rotation.</p>
-            </div>
-            <div className="mr-about-row">
-              <span className="mr-eyebrow">Now</span>
-              <p>The New Era — MERRIER&apos;s first full winter collection — opens this season.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 5. CTA DROP SECTION */}
+      {/* 4. CTA DROP SECTION */}
       <section className="mr-cta">
         <div className="mr-container mr-cta-inner">
           <span className="mr-badge reveal" data-reveal>
