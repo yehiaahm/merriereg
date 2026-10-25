@@ -44,6 +44,15 @@ const nextConfig = {
   async headers() {
     return [
       {
+        // The push service worker must never be served stale from a cache, or
+        // a bug fix to notification handling could take days to reach phones.
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        ],
+      },
+      {
         source: '/:path*',
         headers: [
           { key: 'Content-Security-Policy', value: CSP },

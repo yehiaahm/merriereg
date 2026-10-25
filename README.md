@@ -58,6 +58,7 @@ Health check: `GET /health` — pings the database and returns `{status:"ok"}` /
 | `PORT` | No (Railway sets it) | The app listens on this port — never hardcoded. Defaults to 3000 locally. |
 | `NEXT_PUBLIC_SITE_URL` | No | Used for absolute URLs (e.g. Paymob billing data). |
 | `PAYMOB_API_KEY` / `PAYMOB_INTEGRATION_ID` / `PAYMOB_IFRAME_ID` / `PAYMOB_HMAC_SECRET` | No | Leave unset to run Cash-on-Delivery only — see below. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | No | Enables admin order push notifications — see "Admin order push notifications". |
 
 `scripts/start.mjs` checks for the three required variables before the server
 starts and exits with a clear error naming exactly what's missing, rather than
@@ -125,6 +126,82 @@ Until this is done, checkout simply doesn't offer online payment — the
 faking a successful payment. Order status and payment status are tracked as
 separate fields throughout (an order can be `CONFIRMED` while its payment is
 still `PENDING`, for Cash on Delivery).
+
+## Admin order push notifications
+
+Every real customer order sends a push notification to the admin's phone —
+even when the site is closed. Tapping it opens that exact order in
+`/admin/orders/<id>` (after signing in, if the session expired).
+
+### How it works
+
+- **Web Push + VAPID** via the `web-push` package, a service worker
+  (`public/sw.js`) and a per-admin device list (`PushSubscription` table).
+- **Admin-only**: subscriptions can only be created/removed/tested by a signed-in
+  admin (`/api/admin/push/*`, guarded by `proxy.ts` *and* an in-route check).
+  Sends go only to accounts that are *currently* `isAdmin` — a demoted admin stops
+  receiving notifications immediately. Customers never receive them.
+- **When it fires** (`lib/push/notify-order.ts`): Cash on Delivery orders right after
+  the order is saved; online-card orders only once the Paymob webhook verifies
+  payment (an abandoned card checkout never rings the phone); POS sales are not
+  announced. Idempotent per order (`Order.adminNotifiedAt`, claimed atomically), so
+  retries, double submits and webhook redelivery send one push per device.
+- **Never blocks checkout**: runs after the response (`after()`), retries transient
+  push-service failures 3× with backoff, logs `[push] ...` lines, and releases the
+  claim if every device failed so a later trigger can retry. Expired devices
+  (HTTP 404/410) are removed automatically.
+- **Privacy**: the push contains only the order number and total. The link is just a
+  path — the admin page re-checks the session on the server, so possessing the link
+  grants nothing. Post-login redirects only accept same-site paths.
+- **Enable from the dashboard**: Admin → **Notifications** (enable, test, turn off,
+  remove devices, and per-platform instructions).
+
+### Setup
+
+1. Generate keys **once** (don't rotate later — it invalidates every registered phone):
+
+   ```bash
+   npm run push:generate-keys
+   ```
+
+2. Set these on the server (Railway → Variables; locally in `.env`). The private key
+   stays server-side only:
+
+   | Variable | Value |
+   |---|---|
+   | `VAPID_PUBLIC_KEY` | printed by the command above |
+   | `VAPID_PRIVATE_KEY` | printed by the command above — **secret** |
+   | `VAPID_SUBJECT` | `mailto:you@yourdomain.com` (or your `https://` site URL) |
+
+3. Deploy. The migration `add_admin_push_notifications` runs automatically at start
+   (`scripts/start.mjs` → `prisma migrate deploy`). The site **must be served over
+   HTTPS** (Railway domains are). Without the VAPID variables the feature is simply
+   off and checkout is unaffected.
+
+### Enabling on your phone
+
+- **Android (Chrome/Edge):** open the site, sign in as admin → Admin → Notifications →
+  *Enable Order Notifications* → Allow → *Send test notification*.
+- **iPhone/iPad (iOS/iPadOS 16.4+):** Apple only delivers web push to Home Screen
+  apps. In **Safari** open the site and sign in as admin → Share → *Add to Home
+  Screen* → open **MERRIER Admin from the Home Screen** (sign in again there) →
+  Admin → Notifications → *Enable Order Notifications* → Allow. Notifications
+  do not work from a normal Safari tab.
+- Make sure the phone's system notification settings allow the browser/app, and that
+  Focus/Do Not Disturb isn't silencing it. If you tapped *Block* once, re-allow it in
+  the browser's site settings and reload.
+
+### Tests
+
+```bash
+npm run test:push   # needs `npm run db:local`; uses temporary tagged fixtures
+```
+
+Covers admin-only targeting, exactly-once delivery under concurrent/duplicate
+triggers, card-vs-COD timing, outage/retry/expiry handling, a real VAPID-signed +
+encrypted push decrypted by a local fake push service, the service worker's
+push/tap behaviour, the post-login redirect sanitiser and the endpoint allowlist.
+Actual OS-level delivery to a physical phone can only be confirmed on a device.
 
 ## Smart Size Finder ("Find my size")
 

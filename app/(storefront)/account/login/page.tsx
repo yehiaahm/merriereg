@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { safeRedirectPath } from '@/lib/safe-redirect';
 
 function LoginForm() {
   const router = useRouter();
@@ -27,7 +28,7 @@ function LoginForm() {
       setError(data.error ?? 'Login failed.');
       return;
     }
-    router.push(searchParams.get('next') || '/account');
+    router.push(safeRedirectPath(searchParams.get('next')));
     router.refresh();
   }
 

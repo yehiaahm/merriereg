@@ -5,6 +5,7 @@ import { getCurrentCustomer } from '@/lib/customer-auth';
 import { checkoutSchema } from '@/lib/validation';
 import { createOrderFromCart, CheckoutError } from '@/lib/orders';
 import { createPaymobPaymentUrl, isPaymobConfigured } from '@/lib/payment/paymob';
+import { scheduleNewOrderNotification } from '@/lib/push/schedule';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,6 +40,14 @@ export async function POST(req: NextRequest) {
     }
     console.error('Checkout failed', err);
     return NextResponse.json({ error: 'Something went wrong placing your order. Please try again.' }, { status: 500 });
+  }
+
+  // Cash on Delivery is a placed order as soon as it is saved. Card orders
+  // notify the admin only once Paymob's webhook confirms payment (see
+  // app/api/webhooks/paymob/route.ts). Runs after the response is sent, so a
+  // slow or failing push service can never delay or break checkout.
+  if (input.paymentMethod === 'COD') {
+    scheduleNewOrderNotification(order.id);
   }
 
   if (input.paymentMethod === 'PAYMOB_CARD') {

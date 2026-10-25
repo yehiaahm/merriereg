@@ -196,18 +196,44 @@ model WishlistItem {
 }
 
 model Customer {
-  id           String   @id @default(cuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  phone        String?
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  passwordHash      String
+  phone             String?
   // Grants access to /admin once true. Never settable from signup — only
   // via the `admin:promote` script (see scripts/make-admin.ts), so becoming
   // an admin always requires direct database/server access, not a web request.
-  isAdmin      Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  orders       Order[]
+  isAdmin           Boolean            @default(false)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  orders            Order[]
+  // Devices an admin enabled order notifications on (see lib/push/). Only
+  // ever created for accounts with isAdmin: true, and ignored at send time
+  // if the account has since lost admin access.
+  pushSubscriptions PushSubscription[]
+}
+
+// One Web Push subscription = one browser/PWA install on one device. An admin
+// can have several (phone + laptop). `endpoint` is the push service URL and is
+// itself a bearer secret for sending to that device, so it is never returned to
+// the client after registration and never logged in full.
+model PushSubscription {
+  id           String    @id @default(cuid())
+  customerId   String
+  customer     Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  endpoint     String    @unique
+  p256dh       String
+  auth         String
+  // Truncated User-Agent, only used to label devices in the admin UI.
+  userAgent    String?
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+  // Consecutive failed deliveries; reset on success. A subscription the push
+  // service reports as gone (404/410) is deleted immediately instead.
+  failureCount Int       @default(0)
+
+  @@index([customerId])
 }
 
 model Order {
@@ -266,6 +292,12 @@ model Order {
   // from an attacker's own unrelated transaction could be retargeted at any
   // order just by editing that unsigned field. See app/api/webhooks/paymob.
   paymobOrderId Int? @unique
+
+  // Set (atomically, once) when the "new order" push to admins is claimed for
+  // this order — makes the notification idempotent across checkout retries,
+  // Paymob webhook redelivery and any other duplicate trigger. See
+  // lib/push/notify-order.ts.
+  adminNotifiedAt DateTime?
 
   items    OrderItem[]
   payments Payment[]

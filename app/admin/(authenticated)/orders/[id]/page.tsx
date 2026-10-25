@@ -1,5 +1,6 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { getCurrentCustomer } from '@/lib/customer-auth';
 import { formatEGP } from '@/lib/money';
 import { OrderStatusUpdater } from '@/components/admin/OrderStatusUpdater';
 import { DeliveryLocationMap } from '@/components/admin/DeliveryLocationMap';
@@ -9,6 +10,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  // Authorization is enforced here on the server, in addition to proxy.ts:
+  // order details are never rendered for anyone without a live admin session,
+  // no matter how they reached this URL (notification tap, bookmark, shared
+  // link). Unauthenticated visitors go through sign-in and come straight back.
+  const admin = await getCurrentCustomer();
+  if (!admin?.isAdmin) {
+    redirect(`/account/login?next=${encodeURIComponent(`/admin/orders/${id}`)}`);
+  }
+
   const order = await prisma.order.findUnique({
     where: { id },
     include: { items: true, payments: { orderBy: { createdAt: 'desc' } } },

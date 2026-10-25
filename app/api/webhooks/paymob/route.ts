@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyPaymobHmac } from '@/lib/payment/paymob';
+import { scheduleNewOrderNotification } from '@/lib/push/schedule';
 
 /**
  * Paymob "Transaction processed" webhook.
@@ -98,6 +99,13 @@ export async function POST(req: NextRequest) {
       },
     }),
   ]);
+
+  // Payment verified — this is when an online-card order counts as placed.
+  // Redelivered webhooks return early above, and the notifier is idempotent
+  // per order anyway.
+  if (success) {
+    scheduleNewOrderNotification(order.id);
+  }
 
   return NextResponse.json({ received: true });
 }
