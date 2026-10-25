@@ -23,7 +23,8 @@ export default async function ProductsPage({
   ]);
   const wishlistedIds = wishlistedProductIds(wishlist);
 
-  // listActiveProducts already returns newest first.
+  // listActiveProducts already returns the default order: the featured products
+  // first (FEATURED_PRODUCT_SLUGS in lib/products.ts), then newest first.
   const products =
     sort === 'newest'
       ? listed
