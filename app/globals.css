@@ -114,13 +114,18 @@ textarea {
   display: block;
   overflow: hidden;
 }
+/* Plays from first paint (no JS needed); per-line delays are set inline. */
 .mr-line {
   display: block;
-  transform: translateY(112%);
-  transition: transform 0.8s cubic-bezier(0.16, 0.8, 0.24, 1);
+  animation: mr-line-rise 1.1s cubic-bezier(0.16, 0.8, 0.24, 1) both;
 }
-.mr-hero-title--in .mr-line {
-  transform: translateY(0);
+@keyframes mr-line-rise {
+  from {
+    transform: translateY(112%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 /* ---- Film Grain Overlay (Performance-Optimized) ---- */
@@ -214,6 +219,7 @@ textarea {
   align-items: center;
   gap: 10px;
   color: var(--ink);
+  transition: color 0.3s ease;
 }
 .mr-wordmark-dot {
   width: 9px;
@@ -334,46 +340,306 @@ textarea {
   margin-top: 14px;
 }
 
-/* ---- Hero Section ---- */
+/* Cart / wishlist counters */
+.mr-nav-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  background: var(--line);
+  color: var(--ink-soft);
+}
+.mr-nav-count--active {
+  background: var(--accent);
+  color: var(--cream);
+}
+
+/* Homepage: the nav floats transparently over the video hero until the page scrolls
+   (data-overlay is set by SiteHeaderNav, mr-nav--scrolled by ScrollAnimationHandler). */
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) {
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-wordmark,
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-links a,
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-links a:hover {
+  color: var(--cream);
+}
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-count {
+  background: rgba(236, 229, 216, 0.2);
+  color: var(--cream);
+}
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-count--active {
+  background: var(--accent);
+}
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-cta {
+  background: var(--cream);
+  color: var(--ink) !important;
+}
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-nav-cta:hover {
+  background: var(--accent) !important;
+  color: var(--cream) !important;
+}
+.mr-nav[data-overlay='true']:not(.mr-nav--scrolled) .mr-menu-btn span {
+  background: var(--cream);
+}
+
+/* ---- Hero: Cinematic Video ---- */
+/* The hero slides up under the transparent nav and fills the rest of the viewport. HeroVideo keeps
+   these two variables in sync with the real header; the values here are the pre-hydration fallback. */
+:root {
+  --mr-promo-h: 41px;
+  --mr-nav-h: 62px;
+}
 .mr-hero {
   position: relative;
-  min-height: min(90vh, 800px);
-  display: flex;
-  align-items: center;
-  padding: 50px 40px 30px;
-  overflow: hidden;
-}
-.mr-hero-grid {
-  max-width: 1180px;
-  margin: 0 auto;
-  width: 100%;
-  display: grid;
-  grid-template-columns: 1.05fr 0.95fr;
-  align-items: center;
-  gap: 24px;
-  position: relative;
-  z-index: 2;
-}
-.mr-hero-copy {
+  isolation: isolate;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  justify-content: flex-end;
+  min-height: max(560px, calc(100vh - var(--mr-promo-h)));
+  min-height: max(560px, calc(100svh - var(--mr-promo-h)));
+  margin-top: calc(-1 * var(--mr-nav-h));
+  padding: calc(var(--mr-nav-h) + 40px) 40px clamp(48px, 9vh, 88px);
+  overflow: hidden;
+  background: #2a2521;
+  color: var(--cream);
 }
-.mr-hero-tagbar {
+
+/* Background layers, back to front: blurred ambient fill, the video, legibility shading. */
+.mr-hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  animation: mr-hero-fade 1.1s ease-out both;
+}
+.mr-hero-frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.mr-hero-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  animation: mr-hero-settle 2.6s cubic-bezier(0.16, 0.8, 0.24, 1) both;
+}
+.mr-hero-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(28, 23, 18, 0.5) 0%, rgba(28, 23, 18, 0) calc(var(--mr-nav-h) + 110px)),
+    linear-gradient(0deg, rgba(28, 23, 18, 0.82) 0%, rgba(28, 23, 18, 0.38) 30%, rgba(28, 23, 18, 0) 58%);
+}
+
+/* The footage is vertical: anywhere a full-bleed crop would cut the model off (wider than 2:3), show
+   the whole frame as a feathered, full-height panel over a blurred fill of the same room. */
+@media (min-aspect-ratio: 2/3) {
+  .mr-hero-ambient {
+    position: absolute;
+    inset: 0;
+    background: #3a3632 url('/hero/hero-ambient.webp') center / 100% 100% no-repeat;
+  }
+  .mr-hero-ambient::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(28, 23, 18, 0.16);
+  }
+  .mr-hero-frame {
+    inset: 0 auto auto 50%;
+    height: 100%;
+    aspect-ratio: 9 / 16;
+    transform: translateX(-50%);
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 24%, #000 76%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 24%, #000 76%, transparent);
+  }
+}
+/* Landscape: the model steps right of centre and the copy takes the left. */
+@media (min-aspect-ratio: 1/1) {
+  .mr-hero-frame {
+    left: 64%;
+  }
+  .mr-hero-shade {
+    background:
+      linear-gradient(180deg, rgba(28, 23, 18, 0.45) 0%, rgba(28, 23, 18, 0) calc(var(--mr-nav-h) + 110px)),
+      linear-gradient(90deg, rgba(28, 23, 18, 0.55) 0%, rgba(28, 23, 18, 0.15) 34%, rgba(28, 23, 18, 0) 50%),
+      linear-gradient(0deg, rgba(28, 23, 18, 0.6) 0%, rgba(28, 23, 18, 0) 45%);
+  }
+}
+
+.mr-hero-copy {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 14px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 22px;
+  max-width: 640px;
 }
-.mr-hero-tagbar .mr-eyebrow {
-  color: var(--accent);
+.mr-hero-eyebrow {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 12px;
+  line-height: 1.4;
+  color: rgba(236, 229, 216, 0.85);
+  animation: mr-hero-rise 0.9s cubic-bezier(0.16, 0.8, 0.24, 1) 0.1s both;
+}
+/* Pinned to the first line's centre, so it stays put when the eyebrow wraps on narrow phones. */
+.mr-hero-eyebrow::before {
+  content: '';
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: calc(0.7em - 3.5px);
+  border-radius: 50%;
+  background: var(--accent);
+}
+.mr-hero-title {
+  color: var(--cream);
+  text-shadow: 0 2px 40px rgba(28, 23, 18, 0.25);
+}
+.mr-hero-lede {
+  margin: 0;
+  max-width: 40ch;
+  color: rgba(236, 229, 216, 0.8);
+  animation: mr-hero-rise 0.9s cubic-bezier(0.16, 0.8, 0.24, 1) 0.7s both;
 }
 .mr-hero-actions {
   display: flex;
   align-items: center;
   gap: 20px;
-  margin-top: 4px;
-  flex-wrap: wrap;
+  margin-top: 10px;
+  animation: mr-hero-rise 0.9s cubic-bezier(0.16, 0.8, 0.24, 1) 0.85s both;
 }
+
+/* Cream on the footage; an accent fill sweeps across on hover. */
+.mr-btn-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 32px;
+  border-radius: 2px;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  transition: color 0.45s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+.mr-btn-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--accent);
+  transform: scaleX(0);
+  transform-origin: right center;
+  transition: transform 0.55s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+.mr-btn-hero-arrow {
+  display: inline-block;
+  transition: transform 0.45s cubic-bezier(0.16, 0.8, 0.24, 1);
+}
+.mr-btn-hero:focus-visible {
+  color: var(--cream);
+  outline: 2px solid var(--cream);
+  outline-offset: 4px;
+}
+.mr-btn-hero:focus-visible::before {
+  transform: scaleX(1);
+  transform-origin: left center;
+}
+@media (hover: hover) {
+  .mr-btn-hero:hover {
+    color: var(--cream);
+  }
+  .mr-btn-hero:hover::before {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+  .mr-btn-hero:hover .mr-btn-hero-arrow {
+    transform: translateX(5px);
+  }
+}
+
+.mr-hero-toggle {
+  position: absolute;
+  right: 40px;
+  bottom: calc(clamp(48px, 9vh, 88px) + 3px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(236, 229, 216, 0.4);
+  border-radius: 50%;
+  background: rgba(28, 23, 18, 0.25);
+  color: var(--cream);
+  cursor: pointer;
+  transition: opacity 0.8s ease, border-color 0.25s ease, background 0.25s ease;
+}
+.mr-hero-toggle[data-ready='false'] {
+  opacity: 0;
+  visibility: hidden;
+}
+.mr-hero-toggle:hover {
+  border-color: var(--cream);
+  background: rgba(28, 23, 18, 0.45);
+}
+.mr-hero-toggle:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 3px;
+}
+
+@keyframes mr-hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes mr-hero-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes mr-hero-settle {
+  from {
+    transform: scale(1.06);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .mr-hero-copy {
+    gap: 18px;
+  }
+  .mr-hero-lede {
+    display: none;
+  }
+}
+
 .mr-btn-primary {
   font-family: var(--body);
   font-weight: 700;
@@ -506,25 +772,36 @@ textarea {
 .mr-scrollcue {
   position: absolute;
   left: 50%;
-  bottom: 20px;
+  bottom: 22px;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   z-index: 2;
+  color: rgba(236, 229, 216, 0.75);
+  transition: color 0.2s ease;
+  animation: mr-hero-fade 1s ease 1.2s both;
+}
+.mr-scrollcue:hover {
+  color: var(--cream);
 }
 .mr-scrollcue span {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.22em;
-  color: var(--ink-soft);
 }
 .mr-scrollcue-line {
   width: 1px;
   height: 32px;
-  background: linear-gradient(var(--ink-soft), transparent);
+  background: linear-gradient(currentColor, transparent);
   animation: mr-cue 1.8s ease-in-out infinite;
+}
+/* Full-bleed phone layout: the copy owns the bottom edge. */
+@media (max-aspect-ratio: 2/3) {
+  .mr-scrollcue {
+    display: none;
+  }
 }
 @keyframes mr-cue {
   0% {
@@ -541,6 +818,20 @@ textarea {
     opacity: 0.2;
     transform: scaleY(0.4);
     transform-origin: top;
+  }
+}
+
+/* Hero copy appears in place and the camera holds still; the video itself is gated in HeroVideo. */
+@media (prefers-reduced-motion: reduce) {
+  .mr-line,
+  .mr-hero-media,
+  .mr-hero-video,
+  .mr-hero-eyebrow,
+  .mr-hero-lede,
+  .mr-hero-actions,
+  .mr-scrollcue,
+  .mr-scrollcue-line {
+    animation: none;
   }
 }
 
@@ -1558,18 +1849,15 @@ table.admin-table th[aria-sort] a {
   .container {
     padding: 0 24px;
   }
+  :root {
+    --mr-nav-h: 57px;
+  }
   .mr-hero {
-    padding: 40px 24px 24px;
+    padding: calc(var(--mr-nav-h) + 32px) 24px 40px;
   }
-  .mr-hero-grid {
-    grid-template-columns: 1fr;
-    gap: 40px;
-    text-align: left;
-  }
-  .mr-hero-visual {
-    order: -1;
-    max-width: 300px;
-    margin: 0 auto;
+  .mr-hero-toggle {
+    right: 24px;
+    bottom: 43px;
   }
   .mr-nav {
     padding: 16px 24px;
@@ -1646,3 +1934,4 @@ table.admin-table th[aria-sort] a {
     padding: 0 16px;
   }
 }
+

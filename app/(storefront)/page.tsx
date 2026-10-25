@@ -3,7 +3,7 @@ import { listActiveProducts } from '@/lib/products';
 import { getCurrentWishlist, wishlistedProductIds } from '@/lib/wishlist';
 import { ProductCard } from '@/components/ProductCard';
 import { FeaturedProductShowcase } from '@/components/FeaturedProductShowcase';
-import { HeroVisual } from '@/components/HeroVisual';
+import { HeroVideo } from '@/components/HeroVideo';
 import { MarqueeStrip } from '@/components/MarqueeStrip';
 
 export const dynamic = 'force-dynamic';
@@ -15,51 +15,46 @@ export default async function HomePage() {
 
   return (
     <main>
-      {/* 1. HERO SECTION WITH ICONIC DOTMARK LOGO */}
+      {/* 1. CINEMATIC VIDEO HERO */}
       <section className="mr-hero">
-        <div className="mr-hero-grid">
-          <div className="mr-hero-copy reveal" data-reveal>
-            <div className="mr-hero-tagbar">
-              <span className="mr-eyebrow">Est. 2024 &middot; Essentials-First Streetwear</span>
-            </div>
-            <h1 className="mr-h1 mr-hero-title" id="mrHeroTitle">
-              <span className="mr-line-mask">
-                <span className="mr-line" style={{ transitionDelay: '0.05s' }}>
-                  Choose
-                </span>
+        <div className="mr-hero-copy">
+          <span className="mr-eyebrow mr-hero-eyebrow">Est. 2024 &middot; Essentials-First Streetwear</span>
+          <h1 className="mr-h1 mr-hero-title">
+            <span className="mr-line-mask">
+              <span className="mr-line" style={{ animationDelay: '0.2s' }}>
+                Choose
               </span>
-              <span className="mr-line-mask">
-                <span className="mr-line" style={{ transitionDelay: '0.16s' }}>
-                  Your
-                </span>
+            </span>
+            <span className="mr-line-mask">
+              <span className="mr-line" style={{ animationDelay: '0.32s' }}>
+                Your
               </span>
-              <span className="mr-line-mask">
-                <span className="mr-line" style={{ transitionDelay: '0.27s' }}>
-                  Merrier
-                </span>
+            </span>
+            <span className="mr-line-mask">
+              <span className="mr-line" style={{ animationDelay: '0.44s' }}>
+                Merrier
               </span>
-            </h1>
-            <p className="mr-lede">
-              Elevated essentials and statement silhouettes, built for the everyday and the extraordinary. This winter,
-              MERRIER begins a new era.
-            </p>
-            <div className="mr-hero-actions">
-              <Link className="mr-btn-primary" href="#collection">
-                View the Collection &rarr;
-              </Link>
-              <a className="mr-btn-ghost" href="https://instagram.com/merriereg" target="_blank" rel="noopener">
-                Follow @merriereg
-              </a>
-            </div>
+            </span>
+          </h1>
+          <p className="mr-lede mr-hero-lede">
+            Elevated essentials and statement silhouettes, built for the everyday and the extraordinary.
+          </p>
+          <div className="mr-hero-actions">
+            <Link className="mr-btn-hero" href="/products">
+              Shop All
+              <span className="mr-btn-hero-arrow" aria-hidden="true">
+                &rarr;
+              </span>
+            </Link>
           </div>
-
-          <HeroVisual />
         </div>
 
-        <div className="mr-scrollcue">
+        <a className="mr-scrollcue" href="#collection" aria-label="Scroll to the collection">
           <span>SCROLL</span>
           <div className="mr-scrollcue-line" />
-        </div>
+        </a>
+
+        <HeroVideo />
       </section>
 
       {/* 2. MIDDLE MARQUEE TICKER */}

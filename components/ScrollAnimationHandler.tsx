@@ -7,15 +7,7 @@ export function ScrollAnimationHandler() {
   const pathname = usePathname();
 
   useEffect(() => {
-    // 1. Hero title slide-in transition (if on homepage)
-    const heroTitle = document.getElementById('mrHeroTitle');
-    if (heroTitle) {
-      setTimeout(() => {
-        heroTitle.classList.add('mr-hero-title--in');
-      }, 50);
-    }
-
-    // 2. Navbar scroll glassmorphism state
+    // 1. Navbar scroll glassmorphism state
     const nav = document.getElementById('mrNav');
     const onScroll = () => {
       if (!nav) return;
@@ -25,7 +17,7 @@ export function ScrollAnimationHandler() {
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
 
-    // 3. Scroll Reveal via IntersectionObserver
+    // 2. Scroll Reveal via IntersectionObserver
     const revealEls = document.querySelectorAll('[data-reveal]');
     if ('IntersectionObserver' in window) {
       const io = new IntersectionObserver(

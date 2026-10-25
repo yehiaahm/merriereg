@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export function SiteHeaderNav({
   itemCount,
@@ -15,9 +16,12 @@ export function SiteHeaderNav({
   isAdmin: boolean;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // On the homepage the nav floats transparently over the video hero until the page scrolls.
+  // A data attribute (not a class) so React re-renders never wipe the `mr-nav--scrolled` class.
+  const overHero = usePathname() === '/' && !mobileMenuOpen;
 
   return (
-    <nav className="mr-nav" id="mrNav">
+    <nav className="mr-nav" id="mrNav" data-overlay={overHero}>
       <Link href="/" className="mr-wordmark">
         <span className="mr-wordmark-dot" />
         MERRIER
@@ -35,22 +39,7 @@ export function SiteHeaderNav({
           }}
         >
           Cart
-          <span
-            style={{
-              minWidth: 18,
-              height: 18,
-              borderRadius: '50%',
-              background: itemCount > 0 ? 'var(--accent)' : 'var(--line)',
-              color: itemCount > 0 ? 'var(--cream)' : 'var(--ink-soft)',
-              fontSize: 10,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 4px',
-            }}
-          >
-            {itemCount}
-          </span>
+          <span className={`mr-nav-count${itemCount > 0 ? ' mr-nav-count--active' : ''}`}>{itemCount}</span>
         </Link>
         <Link
           href="/wishlist"
@@ -61,22 +50,7 @@ export function SiteHeaderNav({
           }}
         >
           Wishlist
-          <span
-            style={{
-              minWidth: 18,
-              height: 18,
-              borderRadius: '50%',
-              background: wishlistCount > 0 ? 'var(--accent)' : 'var(--line)',
-              color: wishlistCount > 0 ? 'var(--cream)' : 'var(--ink-soft)',
-              fontSize: 10,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '0 4px',
-            }}
-          >
-            {wishlistCount}
-          </span>
+          <span className={`mr-nav-count${wishlistCount > 0 ? ' mr-nav-count--active' : ''}`}>{wishlistCount}</span>
         </Link>
         <Link href="/track-order">Track Order</Link>
         <Link href={customerName ? '/account' : '/account/login'}>{customerName ? customerName.split(' ')[0] : 'Sign In'}</Link>
