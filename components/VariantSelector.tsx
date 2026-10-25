@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatEGP } from '@/lib/money';
 import { useToast } from '@/components/AddToCartError';
+import { SizeFinder } from '@/components/SizeFinder';
+import type { SizeChartData } from '@/lib/sizing/measurements';
 
 type Variant = {
   id: string;
@@ -24,10 +26,13 @@ export function VariantSelector({
   productName,
   variants,
   images,
+  sizeChart = null,
 }: {
   productName: string;
   variants: Variant[];
   images: ProductImage[];
+  // Verified size chart for this product, or null when there isn't one.
+  sizeChart?: SizeChartData | null;
 }) {
   const router = useRouter();
   const { show, Toast } = useToast();
@@ -81,6 +86,21 @@ export function VariantSelector({
       const firstForColor = variants.find((v) => v.color === color);
       setSelectedSize(firstForColor?.size ?? '');
     }
+  }
+
+  // Applies a size chosen in Find My Size to the real selector. Only sizes
+  // that are purchasable in the current color can be selected, exactly like
+  // clicking the size button.
+  function applyRecommendedSize(size: string) {
+    const variant = variants.find((v) => v.color === selectedColor && v.size === size);
+    if (!variant || !variant.active || variant.stock <= 0) {
+      show(`${size} isn't available in ${selectedColor}.`, 'error');
+      return;
+    }
+    setSelectedSize(variant.size);
+    show(`Size ${variant.size} selected.`);
+    // The dialog closes and returns focus to its trigger; move it to the size instead.
+    setTimeout(() => document.getElementById(`size-btn-${variant.id}`)?.focus(), 0);
   }
 
   function selectImage(i: number) {
@@ -258,13 +278,23 @@ export function VariantSelector({
         </div>
 
         <div>
-          <span className="eyebrow">Size</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span className="eyebrow">Size</span>
+            <SizeFinder
+              productName={productName}
+              chart={sizeChart}
+              variants={variants}
+              selectedColor={selectedColor}
+              onApply={applyRecommendedSize}
+            />
+          </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
             {sizesForColor.map((v) => {
               const disabled = !v.active || v.stock <= 0;
               return (
                 <button
                   key={v.id}
+                  id={`size-btn-${v.id}`}
                   onClick={() => !disabled && setSelectedSize(v.size)}
                   disabled={disabled}
                   style={{

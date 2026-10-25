@@ -19,6 +19,8 @@ type ImageForm = { url: string; altText: string; colorValue: string };
 
 type CategoryOption = { id: string; name: string };
 
+type SizeChartOption = { id: string; name: string; verified: boolean };
+
 type ProductFormValue = {
   id?: string;
   name: string;
@@ -26,6 +28,7 @@ type ProductFormValue = {
   description: string;
   status: 'ACTIVE' | 'DRAFT' | 'ARCHIVED' | 'POS_ONLY';
   categoryId?: string | null;
+  sizeChartId?: string | null;
   images: ImageForm[];
   variants: VariantForm[];
 };
@@ -69,9 +72,11 @@ function slugify(name: string) {
 export function ProductForm({
   initial,
   categories = [],
+  sizeCharts = [],
 }: {
   initial?: ProductFormValue;
   categories?: CategoryOption[];
+  sizeCharts?: SizeChartOption[];
 }) {
   const router = useRouter();
   const isEdit = Boolean(initial?.id);
@@ -82,6 +87,7 @@ export function ProductForm({
   const [description, setDescription] = useState(initial?.description ?? '');
   const [status, setStatus] = useState<ProductFormValue['status']>(initial?.status ?? 'DRAFT');
   const [categoryId, setCategoryId] = useState<string>(initial?.categoryId ?? '');
+  const [sizeChartId, setSizeChartId] = useState<string>(initial?.sizeChartId ?? '');
   const [newCategoryName, setNewCategoryName] = useState('');
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [images, setImages] = useState<ImageForm[]>(initial?.images ?? [{ url: '', altText: '', colorValue: '' }]);
@@ -146,6 +152,7 @@ export function ProductForm({
       description,
       status,
       categoryId: isCreatingCategory ? undefined : categoryId || null,
+      sizeChartId: sizeChartId || null,
       newCategoryName: isCreatingCategory && newCategoryName.trim() ? newCategoryName.trim() : undefined,
       images: images.filter((img) => img.url.trim()).map((img) => ({ url: img.url.trim(), altText: img.altText, colorValue: img.colorValue || undefined })),
       variants: variants.map((v) => ({
@@ -252,6 +259,21 @@ export function ProductForm({
               </select>
             )}
           </div>
+        </div>
+        <div className="field">
+          <label htmlFor="sizeChart">Size chart (for Find My Size)</label>
+          <select id="sizeChart" value={sizeChartId} onChange={(e) => setSizeChartId(e.target.value)}>
+            <option value="">Use the category&apos;s size chart (if any)</option>
+            {sizeCharts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {c.verified ? '' : ' — draft, not shown to customers'}
+              </option>
+            ))}
+          </select>
+          <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+            Only verified charts power recommendations. Manage charts under Size Charts.
+          </span>
         </div>
       </fieldset>
 

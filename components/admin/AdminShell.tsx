@@ -20,6 +20,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M3.8 6.3 12 11l8.2-4.7M12 11v10" />
     </svg>
   ),
+  sizes: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 17 17 3l4 4L7 21z" />
+      <path d="m7 13 2 2M10 10l2 2M13 7l2 2" />
+    </svg>
+  ),
   orders: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
@@ -57,6 +63,7 @@ export interface AdminNavItem {
 const NAV_ITEMS: AdminNavItem[] = [
   { href: '/admin', label: 'Dashboard', icon: 'dashboard' },
   { href: '/admin/products', label: 'Products', icon: 'products' },
+  { href: '/admin/size-charts', label: 'Size Charts', icon: 'sizes' },
   { href: '/admin/orders', label: 'Orders', icon: 'orders' },
   { href: '/admin/customers', label: 'Customers', icon: 'customers' },
   { href: '/admin/analytics', label: 'Analytics', icon: 'analytics' },

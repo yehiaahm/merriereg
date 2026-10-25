@@ -126,6 +126,82 @@ faking a successful payment. Order status and payment status are tracked as
 separate fields throughout (an order can be `CONFIRMED` while its payment is
 still `PENDING`, for Cash on Delivery).
 
+## Smart Size Finder ("Find my size")
+
+A button next to the size selector on every product page that opens a form
+(height, weight, optional chest/waist/etc., preferred fit) and recommends a size
+**from that product's own size chart** — never from BMI or generic weight
+brackets. "Apply this size" selects the real variant, so add-to-cart and
+checkout are unchanged.
+
+**There is no built-in sizing data.** A product shows the finder only when it has
+a *verified* size chart; otherwise it says recommendations aren't available.
+Nothing is estimated or pre-filled.
+
+### Entering size charts (admin)
+
+`/admin/size-charts` → *Add Size Chart*:
+
+- **Body vs garment** — say whether the numbers describe the body a size is for,
+  or the garment itself. Garment numbers are converted to a body size with the
+  **ease** you enter (how much roomier the garment is than the body, from your
+  tech pack). Garment columns without ease are shown to customers but never used
+  for matching.
+- Units are fixed: cm for lengths/circumferences, kg for weight. Enter min–max per
+  size (one number = exact), sizes smallest → largest. Optional: cut, fabric
+  stretch, a note.
+- **Source** is required to mark a chart **Verified**; unverified charts are drafts
+  and never reach the storefront. The server rejects impossible values, duplicate
+  sizes, sizes out of order, and a verified chart with nothing comparable.
+- Assign a chart as the default for **categories** (on the chart page) or to a
+  **single product** (on the product page; it overrides the category chart). A
+  product whose own chart is unverified gets no recommendation — it does not fall
+  back to the category chart.
+
+### How a recommendation is made (`lib/sizing/`)
+
+1. Each chart size becomes a body range per measurement (garment − ease for garment charts).
+2. Each size is scored by how far the customer's measurements fall outside its
+   ranges, measured in "size steps" of that chart. Too tight counts more than too
+   loose unless the fabric stretches. Height/weight only nudge the score when a
+   body measurement is given; on their own they are a *preliminary* estimate.
+3. If the next size is nearly as good they're **between sizes**: preferred fit
+   (or fabric stretch) picks one and the other is offered as an alternative.
+   If height/weight can't separate sizes, the finder asks for chest/waist instead of guessing.
+4. Only **active, in-stock** sizes in the **selected color** are recommended. If the
+   best match is unavailable it says so and suggests a neighbour only when that
+   size is a close match for the measurements.
+5. Confidence (high/medium/low) reflects data quality: body vs garment-derived
+   data, height/weight only, between sizes, conflicting measurements, edge of the
+   chart, or a substituted size. It never claims certainty.
+
+**Privacy:** the calculation runs in the browser. Measurements are not sent to
+the server, stored, or tied to an account; the form says so.
+
+### Tests
+
+```bash
+npm run test:sizing   # engine, validation, chart schema + DB-backed flow (needs `npm run db:local`)
+```
+
+Test charts are synthetic fixtures and are removed afterwards. Run
+`npx prisma migrate deploy` to apply the `add_size_charts` migration.
+
+### Data still needed before this goes live
+
+No real MERRIER size charts exist in the repo, so the finder is **off** for every
+product until you add them. For each line, from the factory/tech-pack (or by
+measuring a sample), provide per size S–XL(XXL):
+
+| Category / products | Needed |
+|---|---|
+| T-Shirts: Black / Beige / Olive Acid Washed Oversized Tee | Chest (and ideally length, shoulder, sleeve) garment measurements, whether measured flat, and the intended ease (it's an oversized cut) |
+| Pants: Blue / Navy / Grey / Black Wide Leg Sweatpants | Waist (relaxed/stretched), hips, inseam, rise, and ease/stretch |
+| Shorts: Black Waffle Knit / Grey Waffle Short | Waist, hips, inseam, and ease/stretch |
+
+Also confirm each fabric's stretch (none/low/moderate/high) — it changes how
+between-size cases are resolved.
+
 ## What's deliberately NOT in Phase 1
 
 Wishlists, reviews, real shipment tracking, returns/exchanges. These were

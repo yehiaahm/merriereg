@@ -124,6 +124,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         description: input.description,
         status: input.status,
         categoryId,
+        // Omitted by older clients → leave the assignment untouched.
+        ...(input.sizeChartId === undefined ? {} : { sizeChartId: input.sizeChartId || null }),
       },
       include: { variants: true, images: true, category: true },
     });

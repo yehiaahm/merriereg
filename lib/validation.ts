@@ -132,6 +132,8 @@ export const productInputSchema = z.object({
   description: z.string().trim().min(1),
   status: z.enum(['ACTIVE', 'DRAFT', 'ARCHIVED', 'POS_ONLY']),
   categoryId: z.string().optional().nullable(),
+  // Size chart for this product; overrides its category's chart. null/'' = inherit.
+  sizeChartId: z.string().optional().nullable(),
   newCategoryName: z.string().trim().max(80).optional(),
   images: z
     .array(

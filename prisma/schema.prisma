@@ -52,11 +52,48 @@ enum PaymentStatus {
 }
 
 model Category {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String    @unique
-  createdAt DateTime  @default(now())
-  products  Product[]
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  // Default size chart for every product in this category that has no chart
+  // of its own (Product.sizeChartId wins). See SizeChart below.
+  sizeChartId String?
+  sizeChart   SizeChart? @relation(fields: [sizeChartId], references: [id], onDelete: SetNull)
+  createdAt   DateTime   @default(now())
+  products    Product[]
+
+  @@index([sizeChartId])
+}
+
+// Admin-maintained size chart powering the storefront's "Find My Size". There
+// is deliberately no built-in/default chart data: a product with no VERIFIED
+// chart simply doesn't get a recommendation. Measurements are centimetres
+// (weight in kg). See lib/sizing/ for how the chart is interpreted.
+model SizeChart {
+  id          String     @id @default(cuid())
+  name        String
+  // BODY: rows are the body measurements a size is meant for.
+  // GARMENT: rows are measurements of the garment itself; "ease" says how
+  // much bigger than the body it is designed to be.
+  basis       String     @default("BODY")
+  // GARMENT only: chest/waist/hips were measured flat (half circumference).
+  garmentFlat Boolean    @default(false)
+  fit         String?
+  stretch     String?
+  notes       String?
+  // Where the numbers come from (tech pack, supplier sheet, own measuring of
+  // a sample...). Required before a chart can be marked verified.
+  source      String?
+  // Only verified charts are used by the storefront. Unverified charts are drafts.
+  verified    Boolean    @default(false)
+  // JSON: [{ size: "M", measurements: { CHEST: {min,max}, ... } }, ...] smallest → largest.
+  sizes       Json
+  // JSON: { CHEST: {min,max}, ... } — GARMENT charts only.
+  ease        Json       @default("{}")
+  products    Product[]
+  categories  Category[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model Product {
@@ -67,6 +104,9 @@ model Product {
   status        ProductStatus    @default(ACTIVE)
   categoryId    String?
   category      Category?        @relation(fields: [categoryId], references: [id])
+  // Overrides the category's size chart for this product.
+  sizeChartId   String?
+  sizeChart     SizeChart?       @relation(fields: [sizeChartId], references: [id], onDelete: SetNull)
   images        ProductImage[]
   variants      ProductVariant[]
   wishlistItems WishlistItem[]
@@ -74,6 +114,7 @@ model Product {
   updatedAt     DateTime         @updatedAt
 
   @@index([categoryId])
+  @@index([sizeChartId])
   @@index([status])
 }
 
@@ -170,9 +211,9 @@ model Customer {
 }
 
 model Order {
-  id          String        @id @default(cuid())
-  orderNumber String        @unique
-  status      OrderStatus   @default(PENDING)
+  id          String      @id @default(cuid())
+  orderNumber String      @unique
+  status      OrderStatus @default(PENDING)
 
   // Set when the order was placed while signed in, or matched to an account
   // afterwards by email/phone (see linkGuestOrders in lib/customer-auth.ts).
@@ -246,7 +287,7 @@ model OrderItem {
 
   // Snapshot fields captured at purchase time — never recomputed from the
   // live product/variant, since prices and names can change after purchase.
-  productName String
+  productName  String
   variantSize  String
   variantColor String
   sku          String

@@ -74,6 +74,7 @@ export async function POST(req: NextRequest) {
       description: input.description,
       status: input.status,
       categoryId,
+      sizeChartId: input.sizeChartId || null,
       images: {
         create: input.images.map((img, i) => ({
           url: img.url,

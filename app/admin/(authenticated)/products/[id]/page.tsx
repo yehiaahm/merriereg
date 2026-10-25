@@ -9,12 +9,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [product, categories] = await Promise.all([
+  const [product, categories, sizeCharts] = await Promise.all([
     prisma.product.findUnique({
       where: { id },
       include: { variants: true, images: { orderBy: { position: 'asc' } } },
     }),
     listCategories(),
+    prisma.sizeChart.findMany({ select: { id: true, name: true, verified: true }, orderBy: { name: 'asc' } }),
   ]);
 
   if (!product) notFound();
@@ -26,6 +27,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     description: product.description,
     status: product.status,
     categoryId: product.categoryId,
+    sizeChartId: product.sizeChartId,
     images: product.images.map((img) => ({
       url: img.url,
       altText: img.altText ?? '',
@@ -47,7 +49,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   return (
     <div>
       <h1 style={{ fontSize: 28, marginBottom: 24 }}>Edit Product</h1>
-      <ProductForm initial={initial} categories={categories} />
+      <ProductForm initial={initial} categories={categories} sizeCharts={sizeCharts} />
     </div>
   );
 }

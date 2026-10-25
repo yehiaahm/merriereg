@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getProductBySlug } from '@/lib/products';
+import { getSizeChartForProduct } from '@/lib/sizing/charts';
 import { getCurrentWishlist, wishlistedProductIds } from '@/lib/wishlist';
 import { VariantSelector } from '@/components/VariantSelector';
 import { WishlistButton } from '@/components/WishlistButton';
@@ -21,12 +22,19 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     notFound();
   }
 
-  const wishlist = await getCurrentWishlist();
+  const [wishlist, sizeChart] = await Promise.all([getCurrentWishlist(), getSizeChartForProduct(product.id)]);
   const isWishlisted = wishlistedProductIds(wishlist).has(product.id);
 
   return (
     <main className="container" style={{ padding: '40px 24px 100px' }}>
-      <VariantSelector productName={product.name} variants={product.variants} images={product.images} />
+      {/* key: switching to another product always starts the size finder fresh. */}
+      <VariantSelector
+        key={product.id}
+        productName={product.name}
+        variants={product.variants}
+        images={product.images}
+        sizeChart={sizeChart}
+      />
 
       <div style={{ marginTop: 20 }}>
         <WishlistButton productId={product.id} isWishlisted={isWishlisted} />
