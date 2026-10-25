@@ -112,6 +112,9 @@ export function SizeFinder({
   }, [submitted, recommendation?.status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!chart) {
+    // Nothing to recommend between when the product comes in a single size
+    // (a cap, a bag...), so don't show a note about missing recommendations.
+    if (new Set(variants.map((v) => v.size)).size <= 1) return null;
     return (
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
         Size recommendations aren&apos;t available for this product yet.
