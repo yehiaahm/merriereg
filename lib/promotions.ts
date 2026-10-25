@@ -14,13 +14,14 @@ export type BundleRule = {
 };
 
 // 3-for-a-fixed-price bundles, mix-and-match within a category (any color,
-// any size). Keyed by Category.slug — see scripts/setup-bundle-categories.mjs
-// for how the catalog is assigned into these three categories.
-export const BUNDLE_RULES: BundleRule[] = [
-  { categorySlug: 'pants', bundleSize: 3, bundlePrice: 150_000, label: '3 Pants for 1,500 LE' },
-  { categorySlug: 't-shirts', bundleSize: 3, bundlePrice: 95_000, label: '3 T-Shirts for 950 LE' },
-  { categorySlug: 'shorts', bundleSize: 3, bundlePrice: 70_000, label: '3 Shorts for 700 LE' },
-];
+// any size), keyed by Category.slug. Currently NONE: the only active offer is
+// the FOLLOW10 code below. The earlier rules were:
+//   { categorySlug: 'pants',    bundleSize: 3, bundlePrice: 150_000, label: '3 Pants for 1,500 LE' }
+//   { categorySlug: 't-shirts', bundleSize: 3, bundlePrice:  95_000, label: '3 T-Shirts for 950 LE' }
+//   { categorySlug: 'shorts',   bundleSize: 3, bundlePrice:  70_000, label: '3 Shorts for 700 LE' }
+// Add rules back here (and in components/PromoBar.tsx) to re-enable them; the
+// cart, checkout and order code already handle any number of rules.
+export const BUNDLE_RULES: BundleRule[] = [];
 
 export type PromoLine = { price: number; quantity: number; categorySlug: string | null };
 
