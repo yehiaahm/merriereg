@@ -1,181 +1,284 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { formatEGP } from '@/lib/money';
-import { productPriceRange, productTotalStock } from '@/lib/products';
 import { useWishlistToggle } from '@/components/useWishlistToggle';
+import { useToast } from '@/components/AddToCartError';
+
+type CardVariant = {
+  id: string;
+  size: string;
+  color: string;
+  colorHex: string | null;
+  price: number;
+  compareAtPrice: number | null;
+  stock: number;
+  active: boolean;
+};
 
 type CardProduct = {
   id?: string;
   slug: string;
   name: string;
   category?: { name: string } | null;
-  images: { url: string; altText: string | null }[];
-  variants: { price: number; compareAtPrice: number | null; active: boolean; stock: number }[];
+  images: { url: string; altText: string | null; colorValue: string | null }[];
+  variants: CardVariant[];
 };
+
+const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '3XL', '4XL'];
+const MAX_SWATCHES = 5;
+
+function sizeRank(size: string) {
+  const i = SIZE_ORDER.indexOf(size.toUpperCase());
+  if (i >= 0) return i;
+  const n = parseFloat(size);
+  return Number.isNaN(n) ? 100 : 100 + n;
+}
 
 export function ProductCard({
   product,
-  index,
   isWishlisted = false,
+  priority = false,
 }: {
   product: CardProduct;
-  index?: number;
   isWishlisted?: boolean;
+  // Above-the-fold cards load eagerly; everything else is lazy-loaded.
+  priority?: boolean;
 }) {
-  const { wishlisted, busy, toggle, Toast } = useWishlistToggle(product.id!, isWishlisted);
-  const { min, max, hasSale } = productPriceRange(product.variants);
-  const totalStock = productTotalStock(product.variants);
-  const outOfStock = totalStock === 0;
-  const idxStr = index !== undefined ? String(index + 1).padStart(2, '0') : null;
+  const router = useRouter();
+  const { show, Toast } = useToast();
+  const { wishlisted, busy, toggle, Toast: WishlistToast } = useWishlistToggle(product.id!, isWishlisted);
 
-  const images = product.images;
-  const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const image = images[activeImageIndex] ?? images[0];
+  const variants = useMemo(
+    () => product.variants.filter((v) => v.active).sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
+    [product.variants]
+  );
 
-  // Auto-advance the card image every 4s, same as the product page gallery;
-  // hovering/touching the card stops it so the image doesn't change under a
-  // visitor who's actively looking at it.
-  const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const stopAutoplay = () => setIsAutoPlaying(false);
+  const colors = useMemo(() => {
+    const seen = new Map<string, { name: string; hex: string | null; inStock: boolean }>();
+    for (const v of variants) {
+      const entry = seen.get(v.color) ?? { name: v.color, hex: v.colorHex, inStock: false };
+      if (v.stock > 0) entry.inStock = true;
+      seen.set(v.color, entry);
+    }
+    return Array.from(seen.values());
+  }, [variants]);
 
-  useEffect(() => {
-    if (!isAutoPlaying || images.length <= 1) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const id = setInterval(() => {
-      setActiveImageIndex((i) => (i + 1) % images.length);
-    }, 4000);
-    return () => clearInterval(id);
-  }, [isAutoPlaying, images.length]);
+  const [color, setColor] = useState(() => (colors.find((c) => c.inStock) ?? colors[0])?.name ?? '');
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+
+  const sizes = variants.filter((v) => v.color === color);
+  const totalStock = variants.reduce((sum, v) => sum + v.stock, 0);
+  const soldOut = totalStock === 0;
+
+  // Price: the cheapest active variant leads; a strike-through only when that variant is really discounted.
+  const lead = variants.reduce<CardVariant | null>((best, v) => (!best || v.price < best.price ? v : best), null);
+  const maxPrice = variants.reduce((m, v) => Math.max(m, v.price), 0);
+  const onSale = !!lead && !!lead.compareAtPrice && lead.compareAtPrice > lead.price;
+  const hasRange = !!lead && maxPrice > lead.price;
+
+  // Images follow the chosen swatch when the product tags its photos by color.
+  const gallery = useMemo(() => {
+    const tagged = product.images.filter((img) => img.colorValue === color);
+    return tagged.length > 0 ? tagged : product.images;
+  }, [product.images, color]);
+  const primary = gallery[0];
+  const secondary = gallery[1];
+
+  async function add(variant: CardVariant) {
+    if (pending || variant.stock <= 0) return;
+    setPending(variant.id);
+    try {
+      const res = await fetch('/api/cart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId: variant.id, quantity: 1 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        show(data.error ?? 'Could not add to cart.', 'error');
+        return;
+      }
+      show(`Added ${product.name} (${variant.color} / ${variant.size}) to cart.`);
+      setJustAdded(variant.id);
+      router.refresh();
+      setTimeout(() => {
+        setJustAdded(null);
+        setOpen(false);
+      }, 1400);
+    } catch {
+      show('Network error — please try again.', 'error');
+    } finally {
+      setPending(null);
+    }
+  }
+
+  const href = `/product/${product.slug}`;
 
   return (
     <>
-    <Link
-      href={`/product/${product.slug}`}
-      className="mr-card"
-      onMouseEnter={stopAutoplay}
-      onTouchStart={stopAutoplay}
-    >
-      <div className="mr-card-icon">
-        {image ? (
-          <Image
-            key={image.url}
-            src={image.url}
-            alt={image.altText ?? product.name}
-            fill
-            sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 25vw"
-            style={{ objectFit: 'cover', transition: 'transform 0.4s ease' }}
-            className="mr-gallery-image"
-          />
-        ) : (
-          <div
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--ink-soft)',
-              fontSize: 12,
-              fontWeight: 600,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-            }}
-          >
-            MERRIER
-          </div>
-        )}
-        <div style={{ position: 'absolute', top: 12, left: 12, display: 'flex', gap: 6, zIndex: 2 }}>
-          {hasSale && <span className="badge badge-sale">Sale</span>}
-          {outOfStock && <span className="badge badge-out">Sold Out</span>}
-        </div>
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={busy}
-          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
-          aria-pressed={wishlisted}
-          style={{
-            position: 'absolute',
-            top: 12,
-            right: 12,
-            zIndex: 2,
-            width: 30,
-            height: 30,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '50%',
-            border: 'none',
-            background: 'rgba(255,255,255,0.85)',
-            color: wishlisted ? 'var(--accent)' : 'var(--ink)',
-            fontSize: 15,
-            lineHeight: 1,
-            cursor: busy ? 'not-allowed' : 'pointer',
-            opacity: busy ? 0.6 : 1,
-          }}
-        >
-          {wishlisted ? '♥' : '♡'}
-        </button>
-        {images.length > 1 && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 10,
-              left: 0,
-              right: 0,
-              display: 'flex',
-              justifyContent: 'center',
-              gap: 5,
-              zIndex: 2,
-            }}
-          >
-            {images.map((_, i) => (
-              <span
-                key={i}
-                style={{
-                  width: 5,
-                  height: 5,
-                  borderRadius: '50%',
-                  background: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
-                  boxShadow: '0 0 0 1px rgba(0,0,0,0.15)',
-                  transition: 'background 0.3s ease',
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-      <div>
-        <div className="mr-card-index">
-          {idxStr ? `${idxStr} · ` : ''}
-          {product.category?.name ?? 'Essentials'}
-        </div>
-        <div className="mr-card-name" style={{ marginTop: 4 }}>
-          {product.name}
-        </div>
-      </div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderTop: '1px solid var(--line)',
-          paddingTop: 12,
-          marginTop: 'auto',
+      <article
+        className={`mr-pcard${soldOut ? ' mr-pcard--soldout' : ''}`}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setOpen(false);
         }}
       >
-        <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)' }}>
-          {min === max ? formatEGP(min) : `${formatEGP(min)} – ${formatEGP(max)}`}
-        </span>
-        <span className="mr-eyebrow" style={{ fontSize: 11, color: 'var(--accent)' }}>
-          View &rarr;
-        </span>
-      </div>
-    </Link>
-    {Toast}
+        <div className="mr-pcard-media">
+          <Link href={href} className="mr-pcard-imglink" tabIndex={-1} aria-hidden="true">
+            {primary ? (
+              <>
+                <Image
+                  key={primary.url}
+                  src={primary.url}
+                  alt=""
+                  fill
+                  sizes="(max-width: 720px) 50vw, (max-width: 1100px) 33vw, 25vw"
+                  priority={priority}
+                  className="mr-pcard-img"
+                />
+                {secondary && (
+                  <Image
+                    key={secondary.url}
+                    src={secondary.url}
+                    alt=""
+                    fill
+                    sizes="(max-width: 720px) 50vw, (max-width: 1100px) 33vw, 25vw"
+                    className="mr-pcard-img mr-pcard-img--alt"
+                  />
+                )}
+              </>
+            ) : (
+              <span className="mr-pcard-placeholder">MERRIER</span>
+            )}
+          </Link>
+
+          {(onSale || soldOut) && (
+            <div className="mr-pcard-tags">
+              {onSale && !soldOut && <span className="mr-tag mr-tag--sale">Sale</span>}
+              {soldOut && <span className="mr-tag">Sold out</span>}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="mr-pcard-heart"
+            onClick={toggle}
+            disabled={busy}
+            aria-label={wishlisted ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+            aria-pressed={wishlisted}
+            data-active={wishlisted}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M12 20.4S3.5 15.1 3.5 9.1A4.6 4.6 0 0 1 12 6.6a4.6 4.6 0 0 1 8.5 2.5c0 6-8.5 11.3-8.5 11.3Z"
+                fill={wishlisted ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+
+          {!soldOut && sizes.length > 0 && (
+            <>
+              <button
+                type="button"
+                className="mr-qa-toggle"
+                onClick={() => setOpen(true)}
+                aria-expanded={open}
+                aria-label={`Quick add ${product.name}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+                  <path d="M7 1.5v11M1.5 7h11" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+
+              <div className="mr-qa" data-open={open} role="group" aria-label={`Quick add ${product.name}`}>
+                <div className="mr-qa-head">
+                  <span>Quick add{colors.length > 1 ? ` · ${color}` : ''}</span>
+                  <button type="button" className="mr-qa-close" onClick={() => setOpen(false)} aria-label="Close quick add">
+                    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                      <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="mr-qa-sizes">
+                  {sizes.map((v) => {
+                    const out = v.stock <= 0;
+                    const done = justAdded === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        className="mr-qa-size"
+                        data-done={done}
+                        disabled={out || pending !== null}
+                        onClick={() => add(v)}
+                        aria-label={
+                          out
+                            ? `Size ${v.size}, sold out`
+                            : `Add size ${v.size} to cart${v.stock <= 3 ? `, only ${v.stock} left` : ''}`
+                        }
+                        title={out ? 'Sold out' : v.stock <= 3 ? `Only ${v.stock} left` : undefined}
+                      >
+                        {pending === v.id ? '…' : done ? '✓' : v.size}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className="mr-pcard-info">
+          {product.category?.name && <span className="mr-pcard-cat">{product.category.name}</span>}
+          <Link href={href} className="mr-pcard-name">
+            {product.name}
+            {soldOut && <span className="mr-sr"> — sold out</span>}
+          </Link>
+          <div className="mr-pcard-row">
+            <span className="mr-pcard-price">
+              {lead ? (
+                <>
+                  <span className={onSale ? 'mr-pcard-now mr-pcard-now--sale' : 'mr-pcard-now'}>
+                    {hasRange && <span className="mr-pcard-from">From </span>}
+                    {formatEGP(lead.price)}
+                  </span>
+                  {onSale && <s className="mr-pcard-was">{formatEGP(lead.compareAtPrice!)}</s>}
+                </>
+              ) : (
+                <span className="mr-pcard-now">&mdash;</span>
+              )}
+            </span>
+            {colors.length > 1 && (
+              <span className="mr-swatches" role="group" aria-label="Colors">
+                {colors.slice(0, MAX_SWATCHES).map((c) => (
+                  <button
+                    key={c.name}
+                    type="button"
+                    className="mr-swatch"
+                    style={{ background: c.hex ?? 'var(--cream-2)' }}
+                    aria-label={`${c.name}${c.inStock ? '' : ' (sold out)'}`}
+                    aria-pressed={c.name === color}
+                    data-out={!c.inStock}
+                    title={c.name}
+                    onClick={() => setColor(c.name)}
+                  />
+                ))}
+                {colors.length > MAX_SWATCHES && <span className="mr-swatch-more">+{colors.length - MAX_SWATCHES}</span>}
+              </span>
+            )}
+          </div>
+        </div>
+      </article>
+      {Toast}
+      {WishlistToast}
     </>
   );
 }

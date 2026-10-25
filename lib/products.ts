@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 
 export const productCardInclude = {
+  category: true,
   images: { orderBy: { position: 'asc' as const }, take: 8 },
   variants: { where: { active: true } },
 };

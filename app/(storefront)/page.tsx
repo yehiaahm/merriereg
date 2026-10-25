@@ -89,9 +89,9 @@ export default async function HomePage() {
           )}
 
           {featured.length > 1 && (
-            <div className="mr-grid" style={{ marginTop: 64 }}>
-              {featured.slice(1).map((product, idx) => (
-                <ProductCard key={product.id} product={product} index={idx + 1} isWishlisted={wishlistedIds.has(product.id)} />
+            <div className="mr-product-grid" style={{ marginTop: 64 }}>
+              {featured.slice(1).map((product) => (
+                <ProductCard key={product.id} product={product} isWishlisted={wishlistedIds.has(product.id)} />
               ))}
             </div>
           )}

@@ -14,7 +14,12 @@ export function useToast() {
   return {
     show: (text: string, type: 'success' | 'error' = 'success') => setMessage({ text, type }),
     Toast: message ? (
-      <div className={`toast ${message.type === 'error' ? 'toast-error' : ''}`}>{message.text}</div>
+      <div
+        className={`toast ${message.type === 'error' ? 'toast-error' : ''}`}
+        role={message.type === 'error' ? 'alert' : 'status'}
+      >
+        {message.text}
+      </div>
     ) : null,
   };
 }

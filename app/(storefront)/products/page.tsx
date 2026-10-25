@@ -1,7 +1,9 @@
 import Link from 'next/link';
-import { listActiveProducts, listCategories } from '@/lib/products';
+import { listActiveProducts, listCategories, productPriceRange } from '@/lib/products';
 import { getCurrentWishlist, wishlistedProductIds } from '@/lib/wishlist';
 import { ProductCard } from '@/components/ProductCard';
+import { ShopSort } from '@/components/ShopSort';
+import { parseSort } from '@/lib/shop-sort';
 
 export const metadata = { title: 'Shop' };
 export const dynamic = 'force-dynamic';
@@ -9,57 +11,86 @@ export const dynamic = 'force-dynamic';
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string }>;
+  searchParams: Promise<{ category?: string; sort?: string }>;
 }) {
-  const { category } = await searchParams;
-  const [products, categories, wishlist] = await Promise.all([
+  const { category, sort: sortParam } = await searchParams;
+  const sort = parseSort(sortParam);
+
+  const [listed, categories, wishlist] = await Promise.all([
     listActiveProducts({ categorySlug: category }),
     listCategories(),
     getCurrentWishlist(),
   ]);
   const wishlistedIds = wishlistedProductIds(wishlist);
 
+  // listActiveProducts already returns newest first.
+  const products =
+    sort === 'newest'
+      ? listed
+      : [...listed].sort((a, b) => {
+          const diff = productPriceRange(a.variants).min - productPriceRange(b.variants).min;
+          return sort === 'price-asc' ? diff : -diff;
+        });
+
+  const activeCategory = categories.find((c) => c.slug === category);
+  const tabHref = (slug?: string) => {
+    const params = new URLSearchParams();
+    if (slug) params.set('category', slug);
+    if (sort !== 'newest') params.set('sort', sort);
+    const qs = params.toString();
+    return qs ? `/products?${qs}` : '/products';
+  };
+
   return (
-    <main className="mr-container" style={{ padding: '60px 40px 120px' }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginBottom: 48 }}>
+    <main className="mr-shop">
+      <header className="mr-shop-head">
         <div>
           <span className="mr-eyebrow">Essentials &middot; Streetwear</span>
-          <h1 className="mr-h2" style={{ marginTop: 12 }}>
-            The Shop
-          </h1>
+          <h1 className="mr-h1 mr-shop-title">{activeCategory ? activeCategory.name : 'The Shop'}</h1>
         </div>
+        <p className="mr-shop-count">
+          {products.length} {products.length === 1 ? 'piece' : 'pieces'}
+        </p>
+      </header>
 
-        {categories.length > 0 && (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Link
-              href="/products"
-              className={!category ? 'mr-btn-primary' : 'btn btn-outline'}
-              style={{ padding: '10px 20px', minHeight: 38, fontSize: 11, letterSpacing: '0.12em' }}
-            >
+      <div className="mr-shop-bar">
+        {categories.length > 0 ? (
+          <nav className="mr-shop-tabs" aria-label="Categories">
+            <Link href={tabHref()} aria-current={!category ? 'page' : undefined}>
               All
             </Link>
             {categories.map((c) => (
-              <Link
-                key={c.id}
-                href={`/products?category=${c.slug}`}
-                className={category === c.slug ? 'mr-btn-primary' : 'btn btn-outline'}
-                style={{ padding: '10px 20px', minHeight: 38, fontSize: 11, letterSpacing: '0.12em' }}
-              >
+              <Link key={c.id} href={tabHref(c.slug)} aria-current={category === c.slug ? 'page' : undefined}>
                 {c.name}
               </Link>
             ))}
-          </div>
+          </nav>
+        ) : (
+          <span />
         )}
+        <ShopSort sort={sort} category={category} />
       </div>
 
       {products.length === 0 ? (
-        <p className="mr-lede" style={{ color: 'var(--ink-soft)' }}>
-          {category ? 'No products found in this category.' : 'No products available right now. Check back soon.'}
-        </p>
+        <div className="mr-shop-empty">
+          <p className="mr-lede">
+            {category ? 'No products found in this category.' : 'No products available right now. Check back soon.'}
+          </p>
+          {category && (
+            <Link href="/products" className="mr-btn-primary">
+              View all products
+            </Link>
+          )}
+        </div>
       ) : (
-        <div className="mr-grid">
+        <div className="mr-product-grid">
           {products.map((product, idx) => (
-            <ProductCard key={product.id} product={product} index={idx} isWishlisted={wishlistedIds.has(product.id)} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              isWishlisted={wishlistedIds.has(product.id)}
+              priority={idx < 4}
+            />
           ))}
         </div>
       )}

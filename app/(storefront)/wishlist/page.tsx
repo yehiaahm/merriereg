@@ -24,9 +24,9 @@ export default async function WishlistPage() {
           </Link>
         </div>
       ) : (
-        <div className="mr-grid">
-          {items.map((item, idx) => (
-            <ProductCard key={item.id} product={item.product} index={idx} isWishlisted />
+        <div className="mr-product-grid">
+          {items.map((item) => (
+            <ProductCard key={item.id} product={item.product} isWishlisted />
           ))}
         </div>
       )}
