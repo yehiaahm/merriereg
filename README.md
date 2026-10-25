@@ -187,20 +187,26 @@ npm run test:sizing   # engine, validation, chart schema + DB-backed flow (needs
 Test charts are synthetic fixtures and are removed afterwards. Run
 `npx prisma migrate deploy` to apply the `add_size_charts` migration.
 
-### Data still needed before this goes live
+### Size data status
 
-No real MERRIER size charts exist in the repo, so the finder is **off** for every
-product until you add them. For each line, from the factory/tech-pack (or by
-measuring a sample), provide per size S–XL(XXL):
+Charts supplied by the store owner live in `scripts/size-chart-data.mjs` and are
+loaded with:
 
-| Category / products | Needed |
+```bash
+npm run db:seed-size-charts   # idempotent; safe to re-run, also from Railway's Console
+```
+
+| Category / products | Status |
 |---|---|
-| T-Shirts: Black / Beige / Olive Acid Washed Oversized Tee | Chest (and ideally length, shoulder, sleeve) garment measurements, whether measured flat, and the intended ease (it's an oversized cut) |
-| Pants: Blue / Navy / Grey / Black Wide Leg Sweatpants | Waist (relaxed/stretched), hips, inseam, rise, and ease/stretch |
-| Shorts: Black Waffle Knit / Grey Waffle Short | Waist, hips, inseam, and ease/stretch |
+| Pants: the four Wide Leg Sweatpants | **On** — height-suggestion table (XS–XL) plus garment waist/length. Height-only, so results are labelled preliminary (medium confidence at best). XS exists in the chart but isn't made, so a very short customer is told XS is unavailable. |
+| Hoodie chart | Saved, **not assigned** (no hoodie product yet). Assign it on a product's edit page when one exists. |
+| T-Shirts: Black / Beige / Olive Acid Washed Oversized Tee | **Off** — no chart yet. Needs chest garment measurements (flat or round) and the intended ease for the oversized cut. |
+| Shorts: Black Waffle Knit / Grey Waffle Short | **Off** — no chart yet. Needs waist, hips, inseam and ease/stretch. |
 
-Also confirm each fabric's stretch (none/low/moderate/high) — it changes how
-between-size cases are resolved.
+To make sweatpant results more reliable (high confidence), add the **ease** for
+waist (how much roomier the garment is than the body) and say whether the waist
+was measured flat — then the garment waist is compared too, not just height.
+Also confirm each fabric's stretch (none/low/moderate/high).
 
 ## What's deliberately NOT in Phase 1
 

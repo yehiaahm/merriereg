@@ -588,7 +588,10 @@ export function recommendSize(
     warnings.push(
       missingDirect.length > 0
         ? `This is a preliminary estimate based on height and weight only. Adding your ${missingDirect.map((k) => MEASUREMENT_LABELS[k].toLowerCase()).join(' or ')} will make it more reliable.`
-        : "This product's chart only lists height and weight ranges, so this is a preliminary estimate — body shape can change which size fits best."
+        : `This product's chart only lists ${comparableKeys
+            .filter(isPreliminary)
+            .map((k) => MEASUREMENT_LABELS[k].toLowerCase())
+            .join(' and ')} ranges, so this is a preliminary estimate — body shape can change which size fits best.`
     );
   }
   if (!between && chosen.comparisons.some((c) => drivingKeys.includes(c.key) && c.position !== 'within')) {
