@@ -7,6 +7,7 @@ import { formatEGP } from '@/lib/money';
 import { useToast } from '@/components/AddToCartError';
 import { flyToCart } from '@/lib/fly-to-cart';
 import { SizeFinder } from '@/components/SizeFinder';
+import { ProductGallery } from '@/components/ProductGallery';
 import type { SizeChartData } from '@/lib/sizing/measurements';
 
 type Variant = {
@@ -62,7 +63,6 @@ export function VariantSelector({
     return colorMatch.length > 0 ? colorMatch : images;
   }, [images, selectedColor]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const activeImage = galleryImages[activeImageIndex] ?? galleryImages[0];
 
   // Auto-advance the gallery every 4s; any user interaction with it stops
   // autoplay for good — a still image the visitor is actively looking at
@@ -147,71 +147,14 @@ export function VariantSelector({
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 48 }} className="product-detail-grid">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
-        <div
-          ref={galleryRef}
-          onPointerDown={stopAutoplay}
-          style={{
-            position: 'relative',
-            aspectRatio: '4 / 5',
-            background: 'var(--cream-2)',
-            border: '1px solid var(--line)',
-            overflow: 'hidden',
-          }}
-        >
-          {activeImage ? (
-            <Image
-              key={activeImage.url}
-              src={activeImage.url}
-              alt={activeImage.altText ?? productName}
-              fill
-              sizes="(max-width: 900px) 100vw, 50vw"
-              style={{ objectFit: 'cover' }}
-              className="mr-gallery-image"
-              priority
-            />
-          ) : (
-            <div
-              style={{
-                width: '100%',
-                height: '100%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--ink-soft)',
-              }}
-            >
-              No image
-            </div>
-          )}
-          {galleryImages.length > 1 && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: 12,
-                left: 0,
-                right: 0,
-                display: 'flex',
-                justifyContent: 'center',
-                gap: 6,
-                zIndex: 2,
-              }}
-            >
-              {galleryImages.map((_, i) => (
-                <span
-                  key={i}
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: i === activeImageIndex ? '#fff' : 'rgba(255,255,255,0.5)',
-                    boxShadow: '0 0 0 1px rgba(0,0,0,0.15)',
-                    transition: 'background 0.3s ease',
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductGallery
+          images={galleryImages}
+          activeIndex={activeImageIndex}
+          productName={productName}
+          frameRef={galleryRef}
+          onSelect={setActiveImageIndex}
+          onInteract={stopAutoplay}
+        />
         {galleryImages.length > 1 && (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {galleryImages.map((img, i) => (
