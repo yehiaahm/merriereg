@@ -10,6 +10,12 @@ export const FOLLOW_DISCOUNT_RATE = 0.1;
 // case-insensitively (see normalizeCouponCode), so "Pasmala.1" works too.
 export const VALID_DISCOUNT_CODES: readonly string[] = [FOLLOW_DISCOUNT_CODE, PASMALA_DISCOUNT_CODE];
 
+/** Codes advertised to customers (checkout offer box). `code` is the display spelling. */
+export const DISCOUNT_OFFERS: readonly { code: string; label: string }[] = [
+  { code: 'FOLLOW10', label: 'Follow Us & Get 10% Off' },
+  { code: 'Pasmala.1', label: 'Get 10% Off Your Order' },
+];
+
 export type BundleRule = {
   categorySlug: string;
   bundleSize: number;

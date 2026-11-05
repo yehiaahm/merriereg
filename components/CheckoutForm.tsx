@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatEGP } from '@/lib/money';
 import { SHIPPING_ZONES, calculateShippingCost } from '@/lib/shipping';
-import { calculateCartDiscount } from '@/lib/promotions';
+import { DISCOUNT_OFFERS, calculateCartDiscount, normalizeCouponCode } from '@/lib/promotions';
 import { DeliveryLocationPicker } from '@/components/DeliveryLocationPicker';
 
 type CartItem = {
@@ -52,6 +52,29 @@ export function CheckoutForm({
     [items, couponCode]
   );
   const couponEntered = couponCode.trim().length > 0;
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  async function copyCode(code: string) {
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch {
+      // Clipboard API unavailable (e.g. non-secure context): fall back to a hidden textarea.
+      const el = document.createElement('textarea');
+      el.value = code;
+      el.style.position = 'fixed';
+      el.style.opacity = '0';
+      document.body.appendChild(el);
+      el.select();
+      try {
+        document.execCommand('copy');
+      } catch {
+        /* ignore */
+      }
+      document.body.removeChild(el);
+    }
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode((current) => (current === code ? null : current)), 1800);
+  }
   const bundleMessage = discount.bundleGroups.length > 0 ? discount.bundleGroups.map((g) => g.label).join(' + ') : null;
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -236,12 +259,69 @@ export function CheckoutForm({
               <span>{formatEGP(item.variant.price * item.quantity)}</span>
             </div>
           ))}
+          <div style={{ border: '1px dashed var(--accent)', padding: 12, marginBottom: 14 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>🎁 Discount codes available</div>
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>
+              Use one code per order — copy it or apply it instantly.
+            </p>
+            {DISCOUNT_OFFERS.map((offer) => {
+              const isApplied = discount.couponApplied && normalizeCouponCode(couponCode) === normalizeCouponCode(offer.code);
+              return (
+                <div
+                  key={offer.code}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    padding: '8px 0',
+                    borderTop: '1px solid var(--line)',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, letterSpacing: 0.5 }}>{offer.code}</div>
+                    <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{offer.label}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      style={{ padding: '6px 12px', fontSize: 12 }}
+                      onClick={() => copyCode(offer.code)}
+                    >
+                      {copiedCode === offer.code ? 'Copied ✓' : 'Copy'}
+                    </button>
+                    {isApplied ? (
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        style={{ padding: '6px 12px', fontSize: 12 }}
+                        onClick={() => setCouponCode('')}
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        style={{ padding: '6px 12px', fontSize: 12 }}
+                        onClick={() => setCouponCode(offer.code)}
+                      >
+                        Apply discount
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
           <div className="field" style={{ marginBottom: 4 }}>
             <label htmlFor="couponCode">Promo code (optional)</label>
             <input
               id="couponCode"
               name="couponCodeInput"
-              placeholder="e.g. FOLLOW10"
+              placeholder="e.g. FOLLOW10 or Pasmala.1"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
               style={{ textTransform: 'uppercase' }}
@@ -272,7 +352,7 @@ export function CheckoutForm({
             ))}
             {discount.couponApplied && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: 'var(--accent)' }}>
-                <span>Follower discount (10%)</span>
+                <span>Discount code (10%)</span>
                 <span>-{formatEGP(discount.couponAmount)}</span>
               </div>
             )}
