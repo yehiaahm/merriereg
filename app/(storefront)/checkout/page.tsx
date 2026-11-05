@@ -3,12 +3,13 @@ import { getCurrentCart, cartTotals } from '@/lib/cart';
 import { getCurrentCustomer } from '@/lib/customer-auth';
 import { isPaymobConfigured } from '@/lib/payment/paymob';
 import { CheckoutForm } from '@/components/CheckoutForm';
+import { listCheckoutOffers } from '@/lib/discount-codes';
 
 export const metadata = { title: 'Checkout' };
 export const dynamic = 'force-dynamic';
 
 export default async function CheckoutPage() {
-  const [cart, customer] = await Promise.all([getCurrentCart(), getCurrentCustomer()]);
+  const [cart, customer, offers] = await Promise.all([getCurrentCart(), getCurrentCustomer(), listCheckoutOffers()]);
   const items = cart?.items ?? [];
 
   if (items.length === 0) {
@@ -24,6 +25,7 @@ export default async function CheckoutPage() {
         items={items}
         subtotal={subtotal}
         paymobEnabled={isPaymobConfigured()}
+        offers={offers}
         customer={customer ? { name: customer.name, email: customer.email, phone: customer.phone } : null}
       />
     </main>

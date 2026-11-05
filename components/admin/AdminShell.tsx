@@ -26,6 +26,12 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="m7 13 2 2M10 10l2 2M13 7l2 2" />
     </svg>
   ),
+  discounts: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z" />
+      <circle cx="7.5" cy="7.5" r="1.2" />
+    </svg>
+  ),
   orders: (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
@@ -71,6 +77,7 @@ const NAV_ITEMS: AdminNavItem[] = [
   { href: '/admin/products', label: 'Products', icon: 'products' },
   { href: '/admin/size-charts', label: 'Size Charts', icon: 'sizes' },
   { href: '/admin/orders', label: 'Orders', icon: 'orders' },
+  { href: '/admin/discount-codes', label: 'Discount Codes', icon: 'discounts' },
   { href: '/admin/customers', label: 'Customers', icon: 'customers' },
   { href: '/admin/analytics', label: 'Analytics', icon: 'analytics' },
   { href: '/admin/pos', label: 'POS', icon: 'pos' },

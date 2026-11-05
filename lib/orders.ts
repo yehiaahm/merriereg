@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { calculateShippingCost } from '@/lib/shipping';
-import { calculateCartDiscount, isFollowCouponValid } from '@/lib/promotions';
+import { calculateCartDiscount, type DiscountRule } from '@/lib/promotions';
+import { checkDiscountCode, minSubtotalMessage, redeemDiscountCode } from '@/lib/discount-codes';
 import type { CartWithItems } from '@/lib/cart';
 import type { z } from 'zod';
 import type { checkoutSchema } from '@/lib/validation';
@@ -101,13 +102,30 @@ export async function createOrderFromCart(cart: CartWithItems, input: CheckoutIn
       });
     }
 
-    if (input.couponCode && !isFollowCouponValid(input.couponCode)) {
-      throw new CheckoutError('That promo code is not valid.');
+    // Re-validate the promo code against the database inside the transaction —
+    // the browser's estimate is never trusted. If anything below throws, the
+    // whole order (including the stock decrements above) rolls back.
+    let rule: DiscountRule | null = null;
+    let redeemedCode: string | null = null;
+    if (input.couponCode) {
+      const check = await checkDiscountCode(tx, input.couponCode);
+      if (!check.ok) throw new CheckoutError(check.message);
+      rule = check.rule;
+
+      const preview = calculateCartDiscount(discountLines, rule);
+      if (!preview.couponApplied) throw new CheckoutError(minSubtotalMessage(rule));
+
+      const redeemed = await redeemDiscountCode(tx, check.row, {
+        customerId: customerId ?? null,
+        phone: input.customerPhone,
+      });
+      if (!redeemed.ok) throw new CheckoutError(redeemed.message);
+      redeemedCode = check.row.code;
     }
 
-    const promo = calculateCartDiscount(discountLines, input.couponCode);
+    const promo = calculateCartDiscount(discountLines, rule);
     const discount = promo.totalDiscount;
-    const couponCode = promo.couponApplied ? input.couponCode!.trim().toUpperCase() : null;
+    const couponCode = redeemedCode;
 
     const shippingCost = calculateShippingCost(input.shippingGovernorate);
     const total = subtotal + shippingCost - discount;

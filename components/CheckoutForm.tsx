@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { formatEGP } from '@/lib/money';
 import { SHIPPING_ZONES, calculateShippingCost } from '@/lib/shipping';
-import { DISCOUNT_OFFERS, calculateCartDiscount, normalizeCouponCode } from '@/lib/promotions';
+import { calculateCartDiscount, describeDiscountRule, type DiscountRule } from '@/lib/promotions';
 import { DeliveryLocationPicker } from '@/components/DeliveryLocationPicker';
 
 type CartItem = {
@@ -19,21 +19,30 @@ type CartItem = {
   };
 };
 
+export type CheckoutOffer = { rule: DiscountRule; label: string };
+
 export function CheckoutForm({
   items,
   subtotal,
   paymobEnabled,
+  offers,
   customer,
 }: {
   items: CartItem[];
   subtotal: number;
   paymobEnabled: boolean;
+  offers: CheckoutOffer[];
   customer: { name: string; email: string; phone: string | null } | null;
 }) {
   const router = useRouter();
   const [governorate, setGovernorate] = useState('Cairo');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'PAYMOB_CARD'>('COD');
-  const [couponCode, setCouponCode] = useState('');
+  // The code currently applied to this order (null = none). Offers carry their
+  // rule so they apply instantly; typed codes are checked by the server first.
+  const [appliedRule, setAppliedRule] = useState<DiscountRule | null>(null);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [checkingCode, setCheckingCode] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -47,11 +56,10 @@ export function CheckoutForm({
           quantity: item.quantity,
           categorySlug: item.variant.product.category?.slug ?? null,
         })),
-        couponCode
+        appliedRule
       ),
-    [items, couponCode]
+    [items, appliedRule]
   );
-  const couponEntered = couponCode.trim().length > 0;
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   async function copyCode(code: string) {
@@ -77,6 +85,42 @@ export function CheckoutForm({
   }
   const bundleMessage = discount.bundleGroups.length > 0 ? discount.bundleGroups.map((g) => g.label).join(' + ') : null;
 
+  function applyOffer(rule: DiscountRule) {
+    setAppliedRule(rule);
+    setCodeInput('');
+    setCodeError(null);
+  }
+
+  function removeCode() {
+    setAppliedRule(null);
+    setCodeError(null);
+  }
+
+  async function applyTypedCode() {
+    const code = codeInput.trim();
+    if (!code || checkingCode) return;
+    setCheckingCode(true);
+    setCodeError(null);
+    try {
+      const res = await fetch('/api/discount-codes/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.valid && data.rule) {
+        setAppliedRule(data.rule as DiscountRule);
+        setCodeInput('');
+      } else {
+        setCodeError(data.message ?? 'Code not recognized.');
+      }
+    } catch {
+      setCodeError('Network error — please try again.');
+    } finally {
+      setCheckingCode(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setFormError(null);
@@ -100,7 +144,7 @@ export function CheckoutForm({
       deliveryLng: deliveryLng ? Number(deliveryLng) : undefined,
       deliveryAddress: String(formData.get('deliveryAddress') ?? ''),
       paymentMethod,
-      couponCode,
+      couponCode: discount.couponApplied && appliedRule ? appliedRule.code : '',
     };
 
     try {
@@ -259,82 +303,123 @@ export function CheckoutForm({
               <span>{formatEGP(item.variant.price * item.quantity)}</span>
             </div>
           ))}
-          <div style={{ border: '1px dashed var(--accent)', padding: 12, marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>🎁 Discount codes available</div>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>
-              Use one code per order — copy it or apply it instantly.
-            </p>
-            {DISCOUNT_OFFERS.map((offer) => {
-              const isApplied = discount.couponApplied && normalizeCouponCode(couponCode) === normalizeCouponCode(offer.code);
-              return (
-                <div
-                  key={offer.code}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    padding: '8px 0',
-                    borderTop: '1px solid var(--line)',
-                  }}
-                >
-                  <div>
-                    <div style={{ fontWeight: 700, letterSpacing: 0.5 }}>{offer.code}</div>
-                    <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{offer.label}</div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      style={{ padding: '6px 12px', fontSize: 12 }}
-                      onClick={() => copyCode(offer.code)}
-                    >
-                      {copiedCode === offer.code ? 'Copied ✓' : 'Copy'}
-                    </button>
-                    {isApplied ? (
+          {offers.length > 0 && (
+            <div style={{ border: '1px dashed var(--accent)', padding: 12, marginBottom: 14 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>🎁 Discount codes available</div>
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>
+                Use one code per order — copy it or apply it instantly.
+              </p>
+              {offers.map(({ rule, label }) => {
+                const isApplied = appliedRule?.code === rule.code && discount.couponApplied;
+                const belowMinimum = discount.subtotal - discount.bundleAmount < rule.minSubtotal;
+                return (
+                  <div
+                    key={rule.code}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      padding: '8px 0',
+                      borderTop: '1px solid var(--line)',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 700, letterSpacing: 0.5 }}>{rule.code}</div>
+                      <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
+                        {label} · {describeDiscountRule(rule)}
+                        {rule.minSubtotal > 0 && ` · min. order ${formatEGP(rule.minSubtotal)}`}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 6 }}>
                       <button
                         type="button"
                         className="btn btn-outline"
                         style={{ padding: '6px 12px', fontSize: 12 }}
-                        onClick={() => setCouponCode('')}
+                        onClick={() => copyCode(rule.code)}
                       >
-                        Remove
+                        {copiedCode === rule.code ? 'Copied ✓' : 'Copy'}
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className="btn btn-primary"
-                        style={{ padding: '6px 12px', fontSize: 12 }}
-                        onClick={() => setCouponCode(offer.code)}
-                      >
-                        Apply discount
-                      </button>
-                    )}
+                      {isApplied ? (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          style={{ padding: '6px 12px', fontSize: 12 }}
+                          onClick={removeCode}
+                        >
+                          Remove
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          style={{ padding: '6px 12px', fontSize: 12 }}
+                          disabled={belowMinimum}
+                          title={belowMinimum ? `Spend at least ${formatEGP(rule.minSubtotal)} to use this code.` : undefined}
+                          onClick={() => applyOffer(rule)}
+                        >
+                          Apply discount
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
           <div className="field" style={{ marginBottom: 4 }}>
             <label htmlFor="couponCode">Promo code (optional)</label>
-            <input
-              id="couponCode"
-              name="couponCodeInput"
-              placeholder="e.g. FOLLOW10 or Pasmala.1"
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value)}
-              style={{ textTransform: 'uppercase' }}
-            />
-            {couponEntered && (
-              <p
-                style={{
-                  fontSize: 12,
-                  marginTop: 4,
-                  color: discount.couponApplied ? 'var(--accent)' : 'var(--danger)',
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                id="couponCode"
+                name="couponCodeInput"
+                placeholder="Enter promo code"
+                value={codeInput}
+                onChange={(e) => {
+                  setCodeInput(e.target.value);
+                  setCodeError(null);
                 }}
+                onKeyDown={(e) => {
+                  // Enter applies the code instead of submitting the whole order form.
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyTypedCode();
+                  }
+                }}
+                autoComplete="off"
+                style={{ flex: 1, minWidth: 0 }}
+              />
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ padding: '0 16px', fontSize: 13 }}
+                disabled={checkingCode || codeInput.trim().length === 0}
+                onClick={applyTypedCode}
               >
-                {discount.couponApplied ? "10% discount applied." : 'Code not recognized.'}
+                {checkingCode ? 'Checking…' : 'Apply'}
+              </button>
+            </div>
+            {codeError && (
+              <p style={{ fontSize: 12, marginTop: 4, color: 'var(--danger)' }} role="alert">
+                {codeError}
+              </p>
+            )}
+            {appliedRule && discount.couponApplied && (
+              <p style={{ fontSize: 12, marginTop: 4, color: 'var(--accent)' }}>
+                Code {appliedRule.code} applied — {describeDiscountRule(appliedRule)}.{' '}
+                <button
+                  type="button"
+                  onClick={removeCode}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'inherit', textDecoration: 'underline', cursor: 'pointer', font: 'inherit' }}
+                >
+                  Remove
+                </button>
+              </p>
+            )}
+            {appliedRule && !discount.couponApplied && (
+              <p style={{ fontSize: 12, marginTop: 4, color: 'var(--danger)' }}>
+                Spend at least {formatEGP(appliedRule.minSubtotal)} to use code {appliedRule.code}.
               </p>
             )}
           </div>
@@ -352,7 +437,7 @@ export function CheckoutForm({
             ))}
             {discount.couponApplied && (
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, color: 'var(--accent)' }}>
-                <span>Discount code (10%)</span>
+                <span>Discount code ({appliedRule?.code})</span>
                 <span>-{formatEGP(discount.couponAmount)}</span>
               </div>
             )}

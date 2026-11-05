@@ -345,3 +345,54 @@ model Payment {
 
   @@index([orderId])
 }
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+// Admin-managed promo codes (Admin → Discount Codes). Customers type or apply
+// a code at checkout; the server re-validates it and records usage inside the
+// order transaction (lib/discount-codes.ts). Money fields are in piastres.
+model DiscountCode {
+  id String @id @default(cuid())
+
+  // Spelling shown to customers (e.g. "Pasmala.1"). `codeKey` is the
+  // upper-cased form used for lookups so matching is case-insensitive.
+  code    String
+  codeKey String @unique
+
+  // Short customer-facing description, e.g. "Follow us & get 10% off".
+  label String?
+
+  type  DiscountType
+  // PERCENT: whole percent 1-100. FIXED: amount in piastres.
+  value Int
+  // PERCENT only: optional ceiling on the discount, in piastres.
+  maxDiscount Int?
+  // Minimum order subtotal (after bundle pricing) required, in piastres.
+  minSubtotal Int @default(0)
+
+  // Total redemptions allowed across all customers; null = unlimited.
+  usageLimit Int?
+  usedCount  Int  @default(0)
+  // When true a phone number / account can redeem the code only once.
+  oncePerCustomer Boolean @default(false)
+
+  startsAt  DateTime?
+  expiresAt DateTime?
+  active    Boolean   @default(true)
+
+  // Where the code is advertised. A code can be valid but hidden (secret
+  // codes handed out directly to a customer).
+  showInBar      Boolean @default(false)
+  showAtCheckout Boolean @default(true)
+  // Optional custom text for the top promo bar; default is generated from the
+  // discount and code.
+  barText String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active])
+}

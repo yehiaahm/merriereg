@@ -23,6 +23,7 @@
     "admin:promote": "tsx scripts/make-admin.ts",
     "create-admin": "node scripts/create-admin.mjs",
     "push:generate-keys": "node scripts/generate-vapid-keys.mjs",
+    "test:discounts": "tsx --test tests/discounts/discount-codes.test.ts",
     "test:push": "tsx --test tests/push/safe-redirect.test.ts tests/push/delivery.test.ts tests/push/service-worker.test.ts"
   },
   "prisma": {

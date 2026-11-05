@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { orderStatusUpdateSchema } from '@/lib/validation';
 import { getCurrentCustomer } from '@/lib/customer-auth';
+import { releaseDiscountCode } from '@/lib/discount-codes';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
           });
         }
       }
+    }
+
+    // A cancelled order never happened, so its promo-code use goes back to the
+    // code's usage limit. (Returned orders keep theirs — the sale did occur.)
+    if (nextStatus === 'CANCELLED') {
+      await releaseDiscountCode(tx, order.couponCode);
     }
 
     if (nextStatus === 'RETURNED') {

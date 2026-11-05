@@ -1,18 +1,16 @@
 import { Fragment } from 'react';
+import { listPromoBarMessages } from '@/lib/discount-codes';
 
-const PROMO_MESSAGES = [
-  'Follow Us & Get 10% Off (Code: FOLLOW10)',
-  'Get 10% Off Your Order (Code: Pasmala.1)',
-];
+// Minimum items per scrolling track so the marquee loops seamlessly even when
+// the admin has only one or two codes switched on.
+const MIN_TRACK_ITEMS = 8;
 
-// Repeated so the marquee track is long enough to loop seamlessly
-// (4 × 2 messages = 8 items per track).
-const TRACK_MESSAGES = Array.from({ length: 4 }, () => PROMO_MESSAGES).flat();
-
-function PromoTrackContent() {
+function PromoTrackContent({ messages }: { messages: string[] }) {
+  const repeats = Math.max(1, Math.ceil(MIN_TRACK_ITEMS / messages.length));
+  const track = Array.from({ length: repeats }, () => messages).flat();
   return (
     <>
-      {TRACK_MESSAGES.map((msg, i) => (
+      {track.map((msg, i) => (
         <Fragment key={i}>
           <i />
           {msg}
@@ -22,15 +20,19 @@ function PromoTrackContent() {
   );
 }
 
-export function PromoBar() {
+/** Top scrolling bar. Messages come from the discount codes the admin flagged "show in promo bar". */
+export async function PromoBar() {
+  const messages = await listPromoBarMessages();
+  if (messages.length === 0) return null;
+
   return (
     <div className="mr-promo-bar" id="mrTop">
       <div className="mr-promo-track">
         <span>
-          <PromoTrackContent />
+          <PromoTrackContent messages={messages} />
         </span>
         <span aria-hidden="true">
-          <PromoTrackContent />
+          <PromoTrackContent messages={messages} />
         </span>
       </div>
     </div>

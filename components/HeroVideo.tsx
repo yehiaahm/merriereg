@@ -42,19 +42,20 @@ export function HeroVideo() {
   useEffect(() => {
     const nav = document.getElementById('mrNav');
     const promo = document.getElementById('mrTop');
-    if (!nav || !promo) return;
+    // The promo bar is absent when no discount code is switched on to show there.
+    if (!nav) return;
     const root = document.documentElement;
     const sync = () => {
       // The mobile menu expands inside the nav; leave it out so the hero doesn't jump while it opens.
       const menu = nav.querySelector<HTMLElement>('.mr-mobile-menu');
       const menuSpace = menu ? menu.offsetHeight + parseFloat(getComputedStyle(menu).marginTop) : 0;
       root.style.setProperty('--mr-nav-h', `${nav.offsetHeight - menuSpace}px`);
-      root.style.setProperty('--mr-promo-h', `${promo.offsetHeight}px`);
+      root.style.setProperty('--mr-promo-h', `${promo ? promo.offsetHeight : 0}px`);
     };
     sync();
     const observer = new ResizeObserver(sync);
     observer.observe(nav);
-    observer.observe(promo);
+    if (promo) observer.observe(promo);
     return () => {
       observer.disconnect();
       root.style.removeProperty('--mr-nav-h');
