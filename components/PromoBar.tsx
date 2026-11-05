@@ -1,10 +1,13 @@
 import { Fragment } from 'react';
 
-const PROMO_MESSAGES = ['Follow Us & Get 10% Off (Code: FOLLOW10)'];
+const PROMO_MESSAGES = [
+  'Follow Us & Get 10% Off (Code: FOLLOW10)',
+  'Get 10% Off Your Order (Code: Pasmala.1)',
+];
 
-// Repeated so the marquee track is long enough to loop seamlessly with a single
-// message (it was 4 messages × 2 before the bundle offers were removed).
-const TRACK_MESSAGES = Array.from({ length: 8 }, () => PROMO_MESSAGES[0]);
+// Repeated so the marquee track is long enough to loop seamlessly
+// (4 × 2 messages = 8 items per track).
+const TRACK_MESSAGES = Array.from({ length: 4 }, () => PROMO_MESSAGES).flat();
 
 function PromoTrackContent() {
   return (

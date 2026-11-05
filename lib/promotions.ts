@@ -3,7 +3,12 @@
 // in the cart/checkout UI) from the same source of truth.
 
 export const FOLLOW_DISCOUNT_CODE = 'FOLLOW10';
+export const PASMALA_DISCOUNT_CODE = 'PASMALA.1';
 export const FOLLOW_DISCOUNT_RATE = 0.1;
+
+// Every code below gives FOLLOW_DISCOUNT_RATE (10%) off. Codes are compared
+// case-insensitively (see normalizeCouponCode), so "Pasmala.1" works too.
+export const VALID_DISCOUNT_CODES: readonly string[] = [FOLLOW_DISCOUNT_CODE, PASMALA_DISCOUNT_CODE];
 
 export type BundleRule = {
   categorySlug: string;
@@ -67,7 +72,7 @@ export function normalizeCouponCode(code: string | null | undefined): string {
 }
 
 export function isFollowCouponValid(code: string | null | undefined): boolean {
-  return normalizeCouponCode(code) === FOLLOW_DISCOUNT_CODE;
+  return VALID_DISCOUNT_CODES.includes(normalizeCouponCode(code));
 }
 
 export type CartDiscount = {

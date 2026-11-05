@@ -254,7 +254,7 @@ export function CheckoutForm({
                   color: discount.couponApplied ? 'var(--accent)' : 'var(--danger)',
                 }}
               >
-                {discount.couponApplied ? "10% follower discount applied." : 'Code not recognized.'}
+                {discount.couponApplied ? "10% discount applied." : 'Code not recognized.'}
               </p>
             )}
           </div>
