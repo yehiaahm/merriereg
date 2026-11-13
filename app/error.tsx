@@ -1,6 +1,12 @@
 'use client';
 
+import posthog from 'posthog-js';
+import { useEffect } from 'react';
+
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    posthog.captureException(error);
+  }, [error]);
   return (
     <main className="container" style={{ padding: '100px 24px', textAlign: 'center' }}>
       <h1 style={{ fontSize: 32, marginBottom: 12 }}>Something went wrong</h1>

@@ -7,6 +7,7 @@ import { formatEGP } from '@/lib/money';
 import { SHIPPING_ZONES, calculateShippingCost } from '@/lib/shipping';
 import { calculateCartDiscount, describeDiscountRule, type DiscountRule } from '@/lib/promotions';
 import { DeliveryLocationPicker } from '@/components/DeliveryLocationPicker';
+import posthog from 'posthog-js';
 
 type CartItem = {
   id: string;
@@ -86,6 +87,7 @@ export function CheckoutForm({
   const bundleMessage = discount.bundleGroups.length > 0 ? discount.bundleGroups.map((g) => g.label).join(' + ') : null;
 
   function applyOffer(rule: DiscountRule) {
+    posthog.capture('discount_applied', { source: 'checkout_offer', discount_type: rule.type });
     setAppliedRule(rule);
     setCodeInput('');
     setCodeError(null);
@@ -109,7 +111,9 @@ export function CheckoutForm({
       });
       const data = await res.json().catch(() => ({}));
       if (data.valid && data.rule) {
-        setAppliedRule(data.rule as DiscountRule);
+        const rule = data.rule as DiscountRule;
+        posthog.capture('discount_applied', { source: 'typed_code', discount_type: rule.type });
+        setAppliedRule(rule);
         setCodeInput('');
       } else {
         setCodeError(data.message ?? 'Code not recognized.');
@@ -159,6 +163,13 @@ export function CheckoutForm({
         setSubmitting(false);
         return;
       }
+      posthog.capture('checkout_submitted', {
+        payment_method: paymentMethod,
+        item_count: items.reduce((count, item) => count + item.quantity, 0),
+        subtotal,
+        total: discount.total + shippingEstimate,
+        has_discount: discount.couponApplied || discount.bundleAmount > 0,
+      });
       window.location.href = data.redirectUrl;
     } catch {
       setFormError('Network error — please try again.');

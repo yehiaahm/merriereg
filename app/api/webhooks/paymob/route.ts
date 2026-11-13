@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
+import { flushPostHogLogs, posthogLogger, SeverityNumber } from '@/instrumentation';
 import { prisma } from '@/lib/prisma';
 import { verifyPaymobHmac } from '@/lib/payment/paymob';
 import { scheduleNewOrderNotification } from '@/lib/push/schedule';
@@ -102,6 +103,16 @@ export async function POST(req: NextRequest) {
       },
     }),
   ]);
+
+  posthogLogger?.emit({
+    body: 'paymob_payment_processed',
+    severityNumber: success ? SeverityNumber.INFO : SeverityNumber.WARN,
+    attributes: {
+      payment_status: newPaymentStatus,
+      resulting_order_status: success && order.status === 'PENDING' ? 'CONFIRMED' : order.status,
+    },
+  });
+  after(flushPostHogLogs);
 
   // Payment verified — this is when an online-card order counts as placed.
   // Redelivered webhooks return early above, and the notifier is idempotent

@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
+import { flushPostHogLogs, posthogLogger, SeverityNumber } from '@/instrumentation';
 import { prisma } from '@/lib/prisma';
 import { getCurrentCart } from '@/lib/cart';
 import { getCurrentCustomer } from '@/lib/customer-auth';
@@ -52,6 +53,16 @@ export async function POST(req: NextRequest) {
     console.error('Checkout failed', err);
     return NextResponse.json({ error: 'Something went wrong placing your order. Please try again.' }, { status: 500 });
   }
+
+  posthogLogger?.emit({
+    body: 'checkout_order_created',
+    severityNumber: SeverityNumber.INFO,
+    attributes: {
+      payment_method: input.paymentMethod,
+      is_authenticated_customer: Boolean(customer),
+    },
+  });
+  after(flushPostHogLogs);
 
   // Cash on Delivery is a placed order as soon as it is saved. Card orders
   // notify the admin only once Paymob's webhook confirms payment (see

@@ -15,7 +15,9 @@ export async function SiteHeader() {
       <SiteHeaderNav
         itemCount={itemCount}
         wishlistCount={wishlistCount}
+        customerId={customer?.id ?? null}
         customerName={customer?.name ?? null}
+        customerEmail={customer?.email ?? null}
         isAdmin={customer?.isAdmin ?? false}
       />
     </div>

@@ -47,5 +47,13 @@ export async function POST(req: NextRequest) {
   // happens via the make-admin script, never through the web.
   await setCustomerSessionCookie(customer.id, false);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: true,
+    customer: {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      isAdmin: customer.isAdmin,
+    },
+  });
 }

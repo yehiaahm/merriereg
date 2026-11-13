@@ -3,6 +3,7 @@
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
+import posthog from 'posthog-js';
 
 function SignupForm() {
   const router = useRouter();
@@ -29,6 +30,12 @@ function SignupForm() {
       setError(data.error ?? 'Could not create your account.');
       return;
     }
+    const { customer } = await res.json();
+    posthog.identify(customer.id, {
+      email: customer.email,
+      name: customer.name,
+      is_admin: customer.isAdmin,
+    });
     router.push(searchParams.get('next') || '/account');
     router.refresh();
   }

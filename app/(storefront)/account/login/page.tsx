@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { safeRedirectPath } from '@/lib/safe-redirect';
+import posthog from 'posthog-js';
 
 function LoginForm() {
   const router = useRouter();
@@ -28,6 +29,12 @@ function LoginForm() {
       setError(data.error ?? 'Login failed.');
       return;
     }
+    const { customer } = await res.json();
+    posthog.identify(customer.id, {
+      email: customer.email,
+      name: customer.name,
+      is_admin: customer.isAdmin,
+    });
     router.push(safeRedirectPath(searchParams.get('next')));
     router.refresh();
   }

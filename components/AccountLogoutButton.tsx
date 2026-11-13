@@ -1,12 +1,16 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 
 export function AccountLogoutButton() {
   const router = useRouter();
 
   async function logout() {
-    await fetch('/api/account/logout', { method: 'POST' });
+    const response = await fetch('/api/account/logout', { method: 'POST' });
+    if (!response.ok) return;
+
+    posthog.reset();
     router.push('/');
     router.refresh();
   }

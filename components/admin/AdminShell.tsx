@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import posthog from 'posthog-js';
 import { AccountLogoutButton } from '@/components/AccountLogoutButton';
 
 const ICONS: Record<string, React.ReactNode> = {
@@ -89,9 +90,31 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + '/');
 }
 
-export function AdminShell({ adminName, children }: { adminName?: string | null; children: React.ReactNode }) {
+export function AdminShell({
+  adminId,
+  adminName,
+  adminEmail,
+  isAdmin,
+  children,
+}: {
+  adminId: string | null;
+  adminName: string | null;
+  adminEmail: string | null;
+  isAdmin: boolean;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    if (!adminId || !adminEmail || !adminName) return;
+
+    posthog.identify(adminId, {
+      email: adminEmail,
+      name: adminName,
+      is_admin: isAdmin,
+    });
+  }, [adminEmail, adminId, adminName, isAdmin]);
 
   // Close the mobile drawer whenever navigation happens — adjusted during
   // render (React's recommended pattern for "reset state when a prop

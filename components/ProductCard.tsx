@@ -8,6 +8,7 @@ import { formatEGP } from '@/lib/money';
 import { useWishlistToggle } from '@/components/useWishlistToggle';
 import { useToast } from '@/components/AddToCartError';
 import { flyToCart } from '@/lib/fly-to-cart';
+import posthog from 'posthog-js';
 
 type CardVariant = {
   id: string;
@@ -106,6 +107,13 @@ export function ProductCard({
         show(data.error ?? 'Could not add to cart.', 'error');
         return;
       }
+      posthog.capture('product_added_to_cart', {
+        product_slug: product.slug,
+        product_category: product.category?.name ?? null,
+        variant_size: variant.size,
+        variant_color: variant.color,
+        unit_price: variant.price,
+      });
       show(`Added ${product.name} (${variant.color} / ${variant.size}) to cart.`);
       setJustAdded(variant.id);
       // The cart counts refresh as the product lands in the cart icon.
