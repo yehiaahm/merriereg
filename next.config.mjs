@@ -1,3 +1,9 @@
+// Better Stack JavaScript tag (components/BetterStackTag.tsx): the loader
+// script comes from betterstack.net, and it sends errors, web vitals, events
+// and session replays back to Better Stack's ingest hosts.
+const betterStackScriptHosts = 'https://betterstack.net https://*.betterstack.net';
+const betterStackConnectHosts = 'https://betterstack.net https://*.betterstack.net https://*.betterstackdata.com';
+
 // The storefront never embeds any third-party iframe/script (Paymob's hosted
 // payment page is a full-page redirect via window.location.href, not an
 // iframe on our own pages — see components/CheckoutForm.tsx), so the CSP
@@ -14,7 +20,7 @@ const posthogAssetsHost = posthogHost?.replace('.i.posthog.com', '-assets.i.post
 
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${posthogAssetsHost ? ` ${posthogAssetsHost}` : ''}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${posthogAssetsHost ? ` ${posthogAssetsHost}` : ''} ${betterStackScriptHosts}`,
   // Google Fonts stylesheet, loaded via a <link> in app/layout.tsx.
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Product images are admin-pasted links to arbitrary hosts (see images.remotePatterns below);
@@ -24,7 +30,7 @@ const CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   // nominatim.openstreetmap.org: reverse-geocodes the Delivery Location picker's
   // confirmed coordinates into a human-readable address (no API key needed).
-  `connect-src 'self' https://nominatim.openstreetmap.org${posthogHost ? ` ${posthogHost}` : ''}`,
+  `connect-src 'self' https://nominatim.openstreetmap.org${posthogHost ? ` ${posthogHost}` : ''} ${betterStackConnectHosts}`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
