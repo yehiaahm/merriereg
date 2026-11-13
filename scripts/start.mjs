@@ -63,9 +63,15 @@ if (missing.length > 0) {
   process.exit(1);
 }
 
+// Session cookies are signed with this secret: anyone who knows it can forge a
+// session (including an admin one). Refuse to start in production with the
+// documented placeholder or anything too short to be a random 32-byte secret.
 if (process.env.NODE_ENV === 'production') {
-  if (process.env.CUSTOMER_SESSION_SECRET === 'change-me') {
-    console.warn('⚠️ WARNING: Using default CUSTOMER_SESSION_SECRET in production! Please generate a secure random 32-byte secret.');
+  const secret = process.env.CUSTOMER_SESSION_SECRET ?? '';
+  if (secret === 'change-me' || secret.length < 32) {
+    console.error('CUSTOMER_SESSION_SECRET must be a random value of at least 32 characters.');
+    console.error("Generate one with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"");
+    process.exit(1);
   }
 }
 

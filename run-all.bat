@@ -18,6 +18,7 @@ if not exist "node_modules" (
 if not exist ".env" (
     echo [2/4] Initializing environment config...
     copy ".env.example" ".env" >nul
+    echo   NOTE: set CUSTOMER_SESSION_SECRET in .env before sharing or deploying this build.
 ) else (
     echo [2/4] Environment config ready.
 )
@@ -34,7 +35,7 @@ echo.
 echo =========================================================
 echo   The website is opening in your browser right now!
 echo   Store:  http://localhost:3000
-echo   Admin:  http://localhost:3000/admin/login
+echo   Admin:  http://localhost:3000/account/login
 echo =========================================================
 echo.
 

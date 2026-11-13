@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { formatEGP } from '@/lib/money';
@@ -20,6 +21,7 @@ const formatDate = (d: Date) =>
   new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'Africa/Cairo' }).format(d);
 
 export default async function AdminDiscountCodesPage() {
+  await requireAdmin();
   const now = new Date();
   const codes = await prisma.discountCode.findMany({ orderBy: { createdAt: 'desc' } });
 

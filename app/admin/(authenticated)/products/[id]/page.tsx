@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { piastresToEgp } from '@/lib/money';
@@ -8,6 +9,7 @@ export const metadata = { title: 'Admin — Edit Product' };
 export const dynamic = 'force-dynamic';
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const [product, categories, sizeCharts] = await Promise.all([
     prisma.product.findUnique({

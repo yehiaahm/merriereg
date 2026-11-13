@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 
 /**
  * Paymob integration (online card payment).
@@ -170,5 +170,7 @@ export function verifyPaymobHmac(transaction: Record<string, unknown>, providedH
   if (!process.env.PAYMOB_HMAC_SECRET) return false;
   const concatenated = HMAC_FIELDS.map((field) => String(getPath(transaction, field) ?? '')).join('');
   const computed = createHmac('sha512', process.env.PAYMOB_HMAC_SECRET).update(concatenated).digest('hex');
-  return computed === providedHmac;
+  const a = Buffer.from(computed, 'utf8');
+  const b = Buffer.from(String(providedHmac), 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
 }

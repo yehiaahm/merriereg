@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { customerSignupSchema } from '@/lib/validation';
-import { hashPassword, setCustomerSessionCookie, linkGuestOrders } from '@/lib/customer-auth';
+import { hashPassword, setCustomerSessionCookie } from '@/lib/customer-auth';
 import { prisma } from '@/lib/prisma';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -40,7 +40,9 @@ export async function POST(req: NextRequest) {
     throw err;
   }
 
-  await linkGuestOrders(customer.id, email, phone);
+  // Guest orders are deliberately NOT attached to the new account by matching
+  // email/phone: neither is verified here, so anyone could register with a
+  // victim's details and inherit their order history (names, addresses).
   // New accounts are never admin (isAdmin defaults false) — promotion only
   // happens via the make-admin script, never through the web.
   await setCustomerSessionCookie(customer.id, false);

@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import { notFound } from 'next/navigation';
 import { getCustomerDetail } from '@/lib/analytics/customers';
 import { CustomerStats } from '@/components/admin/CustomerStats';
@@ -14,6 +15,7 @@ const STATUS_BADGE_CLASS: Record<string, string> = {
 };
 
 export default async function AdminCustomerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const customer = await getCustomerDetail(id);
   if (!customer) notFound();

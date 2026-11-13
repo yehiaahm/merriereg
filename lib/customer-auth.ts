@@ -49,26 +49,9 @@ export async function getCurrentCustomer() {
   return prisma.customer.findUnique({ where: { id: claims.customerId } });
 }
 
-/**
- * Attaches any past guest orders placed under this email (or phone, if
- * given) to the now-authenticated customer. Guest checkout never asks for
- * an account, so this is how a returning customer's order history gets
- * reunited with their account once they sign up or log in.
- */
-export async function linkGuestOrders(customerId: string, email: string, phone?: string | null): Promise<void> {
-  await prisma.order.updateMany({
-    where: {
-      customerId: null,
-      OR: [
-        // Case-insensitive: guest checkout emails predate lowercase normalization
-        // (and Postgres string equality is case-sensitive), so an exact match
-        // would silently miss orders placed with a differently-cased email.
-        { customerEmail: { equals: email, mode: 'insensitive' } },
-        ...(phone ? [{ customerPhone: phone }] : []),
-      ],
-    },
-    data: { customerId },
-  });
-}
+// NOTE: there is intentionally no "link past guest orders by email/phone"
+// helper. Email and phone are not verified at signup, so linking on them would
+// let an attacker register with someone else's details and read their orders.
+// If this is ever re-added it must require a verified email (one-time link/code).
 
 export { CUSTOMER_COOKIE_NAME };

@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import Link from 'next/link';
 import { listSizeCharts } from '@/lib/sizing/charts';
 import { parseStoredChart } from '@/lib/sizing/chart-schema';
@@ -6,6 +7,7 @@ export const metadata = { title: 'Admin — Size Charts' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminSizeChartsPage() {
+  await requireAdmin();
   const charts = await listSizeCharts();
 
   return (

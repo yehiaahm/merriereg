@@ -5,21 +5,27 @@ import { rateLimit } from '@/lib/rate-limit';
 import { getCurrentCustomer } from '@/lib/customer-auth';
 import type { Order, OrderItem } from '@prisma/client';
 
-function serializeOrder(order: Order & { items: OrderItem[] }) {
+/**
+ * `redact: true` is used for anonymous lookups (order number + phone are the
+ * only proof of ownership there, and both are guessable/non-secret): it never
+ * returns the street-level address or the customer's full name. The signed-in
+ * owner gets the full record.
+ */
+function serializeOrder(order: Order & { items: OrderItem[] }, redact = false) {
   return {
     orderNumber: order.orderNumber,
     status: order.status,
-    customerName: order.customerName,
+    customerName: redact ? order.customerName.split(' ')[0] : order.customerName,
     createdAt: order.createdAt,
     paymentMethod: order.paymentMethod,
     paymentStatus: order.paymentStatus,
     shippingGovernorate: order.shippingGovernorate,
-    shippingArea: order.shippingArea,
-    shippingStreet: order.shippingStreet,
-    shippingBuilding: order.shippingBuilding,
-    shippingApartment: order.shippingApartment,
-    deliveryAddress: order.deliveryAddress,
-    hasDeliveryLocation: order.deliveryLat !== null && order.deliveryLng !== null,
+    shippingArea: redact ? null : order.shippingArea,
+    shippingStreet: redact ? null : order.shippingStreet,
+    shippingBuilding: redact ? null : order.shippingBuilding,
+    shippingApartment: redact ? null : order.shippingApartment,
+    deliveryAddress: redact ? null : order.deliveryAddress,
+    hasDeliveryLocation: !redact && order.deliveryLat !== null && order.deliveryLng !== null,
     subtotal: order.subtotal,
     shippingCost: order.shippingCost,
     discount: order.discount,
@@ -65,17 +71,13 @@ export async function POST(req: NextRequest) {
     if (!order) {
       return NextResponse.json({ error: "We couldn't find an order with that number and phone." }, { status: 404 });
     }
-    return NextResponse.json({ orders: [serializeOrder(order)], moreOrdersAvailable: false });
+    const owner = await getCurrentCustomer();
+    const isOwner = !!owner && order.customerId === owner.id;
+    return NextResponse.json({ orders: [serializeOrder(order, !isOwner)], moreOrdersAvailable: false });
   }
 
-  // Path 2: phone number only — the convenient path, with no order number
-  // required. To stop a phone number alone from exposing someone's complete
-  // order history (see requirement 20), this only ever returns:
-  //   - every order, if the requester is already logged into the matching
-  //     account (reusing the existing password-protected session — no new
-  //     verification infrastructure needed), or
-  //   - otherwise just the single most recent order for that phone, with a
-  //     nudge to sign in for the rest.
+  // Path 2: phone number only. Only a signed-in customer whose account phone
+  // matches gets their order history; anonymous callers are refused (below).
   if (!rateLimit(req, 'track-order-phone', 5, 15 * 60 * 1000)) {
     return NextResponse.json({ error: 'Too many attempts. Please try again later.' }, { status: 429 });
   }
@@ -92,20 +94,14 @@ export async function POST(req: NextRequest) {
     if (orders.length === 0) {
       return NextResponse.json({ error: "We couldn't find any orders for that phone number." }, { status: 404 });
     }
-    return NextResponse.json({ orders: orders.map(serializeOrder), moreOrdersAvailable: false });
+    return NextResponse.json({ orders: orders.map((o) => serializeOrder(o)), moreOrdersAvailable: false });
   }
 
-  const [mostRecent, total] = await Promise.all([
-    prisma.order.findFirst({ where: { customerPhone: phone }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
-    prisma.order.count({ where: { customerPhone: phone } }),
-  ]);
-
-  if (!mostRecent) {
-    return NextResponse.json({ error: "We couldn't find any orders for that phone number." }, { status: 404 });
-  }
-
-  return NextResponse.json({
-    orders: [serializeOrder(mostRecent)],
-    moreOrdersAvailable: total > 1,
-  });
+  // Anonymous phone-only lookups are not offered: a phone number is not a
+  // secret, so returning any order data for it would leak customers' details
+  // to anyone who knows (or guesses) the number.
+  return NextResponse.json(
+    { error: 'Enter your order number too, or sign in to see your orders.' },
+    { status: 400 }
+  );
 }

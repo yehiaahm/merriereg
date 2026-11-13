@@ -24,6 +24,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   return NextResponse.json({ order });
 }
 
+class StaleOrderError extends Error {}
+
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
   CONFIRMED: ['PROCESSING', 'CANCELLED'],
@@ -63,45 +65,61 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     );
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    if (nextStatus === 'CANCELLED' || nextStatus === 'RETURNED') {
-      for (const item of order.items) {
-        if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: { stock: { increment: item.quantity } },
-          });
+  let updated;
+  try {
+    updated = await prisma.$transaction(async (tx) => {
+      // Compare-and-set on the status we validated against: if another request
+      // changed it in the meantime, nothing below runs (no double restock / coupon
+      // release from two concurrent cancellations).
+      const claimed = await tx.order.updateMany({
+        where: { id, status: order.status },
+        data: { status: nextStatus },
+      });
+      if (claimed.count === 0) throw new StaleOrderError();
+
+      if (nextStatus === 'CANCELLED' || nextStatus === 'RETURNED') {
+        for (const item of order.items) {
+          if (item.variantId) {
+            await tx.productVariant.update({
+              where: { id: item.variantId },
+              data: { stock: { increment: item.quantity } },
+            });
+          }
         }
       }
-    }
 
-    // A cancelled order never happened, so its promo-code use goes back to the
-    // code's usage limit. (Returned orders keep theirs — the sale did occur.)
-    if (nextStatus === 'CANCELLED') {
-      await releaseDiscountCode(tx, order.couponCode);
-    }
+      // A cancelled order never happened, so its promo-code use goes back to the
+      // code's usage limit. (Returned orders keep theirs — the sale did occur.)
+      if (nextStatus === 'CANCELLED') {
+        await releaseDiscountCode(tx, order.couponCode);
+      }
 
-    if (nextStatus === 'RETURNED') {
-      return tx.order.update({
-        where: { id },
-        data: {
-          status: nextStatus,
-          paymentStatus: 'REFUNDED',
-          payments: {
-            create: {
-              provider: order.paymentMethod,
-              status: 'REFUNDED',
-              // Negative amount marks this as money paid back out, distinct
-              // from the original positive-amount payment record.
-              amount: -order.total,
+      if (nextStatus === 'RETURNED') {
+        return tx.order.update({
+          where: { id },
+          data: {
+            paymentStatus: 'REFUNDED',
+            payments: {
+              create: {
+                provider: order.paymentMethod,
+                status: 'REFUNDED',
+                // Negative amount marks this as money paid back out, distinct
+                // from the original positive-amount payment record.
+                amount: -order.total,
+              },
             },
           },
-        },
-      });
-    }
+        });
+      }
 
-    return tx.order.update({ where: { id }, data: { status: nextStatus } });
-  });
+      return tx.order.findUniqueOrThrow({ where: { id } });
+    });
+  } catch (err) {
+    if (err instanceof StaleOrderError) {
+      return NextResponse.json({ error: 'This order was just updated by someone else. Reload and try again.' }, { status: 409 });
+    }
+    throw err;
+  }
 
   return NextResponse.json({ order: updated });
 }

@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import Link from 'next/link';
 import { listCustomers, type CustomerSort, type CustomerStatus } from '@/lib/analytics/customers';
 import { CustomerTable } from '@/components/admin/CustomerTable';
@@ -18,6 +19,7 @@ export default async function AdminCustomersPage({
 }: {
   searchParams: Promise<{ q?: string; status?: string; sort?: string; dir?: string; page?: string }>;
 }) {
+  await requireAdmin();
   const params = await searchParams;
   const q = params.q?.trim() || undefined;
   const status = STATUSES.includes(params.status as CustomerStatus) ? (params.status as CustomerStatus) : undefined;

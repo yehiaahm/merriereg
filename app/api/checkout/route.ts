@@ -6,16 +6,27 @@ import { checkoutSchema } from '@/lib/validation';
 import { createOrderFromCart, CheckoutError } from '@/lib/orders';
 import { createPaymobPaymentUrl, isPaymobConfigured } from '@/lib/payment/paymob';
 import { scheduleNewOrderNotification } from '@/lib/push/schedule';
+import { rateLimit, rateLimitKey } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  // Orders reserve stock immediately, so unthrottled checkout lets a script
+  // exhaust inventory and spam admin notifications. Limit per IP and per phone.
+  if (!rateLimit(req, 'checkout', 10, 10 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many orders from this connection. Please try again later.' }, { status: 429 });
+  }
+
   const body = await req.json().catch(() => null);
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
   }
   const input = parsed.data;
+
+  if (!rateLimitKey('checkout-phone', input.customerPhone, 5, 60 * 60 * 1000)) {
+    return NextResponse.json({ error: 'Too many orders for this phone number. Please try again later.' }, { status: 429 });
+  }
 
   if (input.paymentMethod === 'PAYMOB_CARD' && !isPaymobConfigured()) {
     return NextResponse.json(

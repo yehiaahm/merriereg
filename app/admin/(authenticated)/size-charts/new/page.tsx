@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import { SizeChartForm } from '@/components/admin/SizeChartForm';
 import { listCategories } from '@/lib/products';
 
@@ -5,6 +6,7 @@ export const metadata = { title: 'Admin — New Size Chart' };
 export const dynamic = 'force-dynamic';
 
 export default async function NewSizeChartPage() {
+  await requireAdmin();
   const categories = await listCategories();
   return (
     <div>

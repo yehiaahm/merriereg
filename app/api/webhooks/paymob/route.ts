@@ -42,7 +42,10 @@ export async function POST(req: NextRequest) {
   const orderInfo = transaction.order as { id?: number; merchant_order_id?: string } | undefined;
   const orderNumber = orderInfo?.merchant_order_id;
   const paymobOrderId = Number(orderInfo?.id);
-  const success = Boolean(transaction.success);
+  // Strict: only a literal true counts, and voided/refunded transactions never
+  // count as a successful payment even if Paymob flags `success`.
+  const isTrue = (v: unknown) => v === true || v === 'true';
+  const success = isTrue(transaction.success) && !isTrue(transaction.is_voided) && !isTrue(transaction.is_refunded);
   const amountCents = Number(transaction.amount_cents);
   const reference = String(transaction.id ?? '');
 
@@ -103,7 +106,11 @@ export async function POST(req: NextRequest) {
   // Payment verified — this is when an online-card order counts as placed.
   // Redelivered webhooks return early above, and the notifier is idempotent
   // per order anyway.
-  if (success) {
+  if (success && (order.status === 'CANCELLED' || order.status === 'RETURNED')) {
+    // The customer paid for an order that was cancelled/returned in the meantime.
+    // Don't announce it as a new order; flag it so the payment gets refunded.
+    console.error(`[paymob] payment received for ${order.status} order ${order.orderNumber} — refund needed`);
+  } else if (success) {
     scheduleNewOrderNotification(order.id);
   }
 

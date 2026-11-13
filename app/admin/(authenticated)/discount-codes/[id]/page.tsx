@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { DiscountCodeForm, type DiscountCodeFormValue } from '@/components/admin/DiscountCodeForm';
@@ -8,6 +9,7 @@ export const dynamic = 'force-dynamic';
 const egp = (piastres: number | null) => (piastres === null ? '' : String(piastres / 100));
 
 export default async function EditDiscountCodePage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const c = await prisma.discountCode.findUnique({ where: { id } });
   if (!c) notFound();

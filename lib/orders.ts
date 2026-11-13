@@ -1,3 +1,4 @@
+import { randomInt } from 'crypto';
 import { prisma } from '@/lib/prisma';
 import { calculateShippingCost } from '@/lib/shipping';
 import { calculateCartDiscount, type DiscountRule } from '@/lib/promotions';
@@ -20,7 +21,9 @@ export function generateOrderNumber(): string {
   const y = date.getFullYear().toString().slice(-2);
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
-  const random = Math.floor(1000 + Math.random() * 9000);
+  // Cryptographically random, 8 digits (previously 4 digits from Math.random).
+  // The order number is a lookup key, never a secret on its own.
+  const random = randomInt(10_000_000, 100_000_000);
   return `MR${y}${m}${d}-${random}`;
 }
 

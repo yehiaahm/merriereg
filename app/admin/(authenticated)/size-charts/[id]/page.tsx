@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { listCategories } from '@/lib/products';
@@ -11,6 +12,7 @@ export const dynamic = 'force-dynamic';
 const str = (n: number) => String(n);
 
 export default async function EditSizeChartPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const [chart, categories] = await Promise.all([
     prisma.sizeChart.findUnique({ where: { id }, include: { categories: { select: { id: true } } } }),

@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { formatEGP } from '@/lib/money';
@@ -13,6 +14,7 @@ export default async function AdminOrdersPage({
 }: {
   searchParams: Promise<{ status?: string; q?: string }>;
 }) {
+  await requireAdmin();
   const { status, q } = await searchParams;
 
   const where: Prisma.OrderWhereInput = {};

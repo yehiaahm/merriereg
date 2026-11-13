@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import { listSellableProducts } from '@/lib/products';
 import { POSTerminal } from '@/components/admin/POSTerminal';
 
@@ -5,6 +6,7 @@ export const metadata = { title: 'Point of Sale' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPOSPage() {
+  await requireAdmin();
   const products = await listSellableProducts();
 
   const posProducts = products

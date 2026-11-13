@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { formatEGP } from '@/lib/money';
@@ -7,6 +8,7 @@ export const metadata = { title: 'Admin — Products' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminProductsPage() {
+  await requireAdmin();
   const products = await prisma.product.findMany({
     include: { variants: true },
     orderBy: { createdAt: 'desc' },

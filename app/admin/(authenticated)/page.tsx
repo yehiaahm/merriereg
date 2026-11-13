@@ -1,3 +1,4 @@
+import { requireAdmin } from '@/lib/require-admin';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { OverviewDashboard } from '@/components/admin/OverviewDashboard';
@@ -9,6 +10,7 @@ export const metadata = { title: 'Admin Dashboard' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminDashboardPage() {
+  await requireAdmin();
   const [recentOrders, recentActivity, lowStockVariants] = await Promise.all([
     prisma.order.findMany({
       orderBy: { createdAt: 'desc' },

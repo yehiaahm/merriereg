@@ -36,6 +36,8 @@ const nextConfig = {
   // standalone (meant for minimal Docker images) isn't needed and actually
   // breaks plain `next start`.
   agentRules: false,
+  // Don't advertise the framework in an X-Powered-By response header.
+  poweredByHeader: false,
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**' },
