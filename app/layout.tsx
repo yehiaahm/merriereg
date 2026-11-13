@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import BetterStackTag from '@/components/BetterStackTag';
 
 export const metadata: Metadata = {
   title: {
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap"
           rel="stylesheet"
         />
+        <BetterStackTag />
       </head>
       <body>{children}</body>
     </html>
