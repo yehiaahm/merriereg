@@ -1,8 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import posthog from 'posthog-js';
+import { useEffect } from 'react';
 
 export default function AdminError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  useEffect(() => {
+    posthog.captureException(error);
+  }, [error]);
   return (
     <div className="admin-error-state" style={{ padding: '80px 20px' }}>
       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { formatEGP } from '@/lib/money';
 import { OrderStatusTimeline } from '@/components/OrderStatusTimeline';
+import posthog from 'posthog-js';
 
 type TrackedItem = {
   id: string;
@@ -64,6 +65,10 @@ export function TrackOrderForm() {
       setError(data.error ?? 'Something went wrong. Please try again.');
       return;
     }
+    posthog.capture('order_tracking_searched', {
+      lookup_method: showOrderNumber ? 'order_number_and_phone' : 'signed_in_phone_history',
+      result_count: data.orders.length,
+    });
     setOrders(data.orders);
     setMoreOrdersAvailable(data.moreOrdersAvailable);
     if (data.orders?.length === 1) setSelected(data.orders[0]);

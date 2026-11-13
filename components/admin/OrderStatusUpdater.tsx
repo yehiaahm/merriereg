@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   PENDING: ['CONFIRMED', 'CANCELLED'],
@@ -45,6 +46,7 @@ export function OrderStatusUpdater({ orderId, status }: { orderId: string; statu
       setError(data.error ?? 'Could not update status.');
       return;
     }
+    posthog.capture('admin_order_status_updated', { previous_status: status, next_status: next });
     router.refresh();
   }
 

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { formatEGP } from '@/lib/money';
 import { POSReceipt } from './POSReceipt';
+import posthog from 'posthog-js';
 
 type Variant = {
   id: string;
@@ -157,6 +158,13 @@ export function POSTerminal({ products }: { products: PosProduct[] }) {
         return;
       }
       const order = data.order;
+      posthog.capture('admin_pos_sale_completed', {
+        payment_method: order.paymentMethod,
+        item_count: order.items.reduce((count: number, item: { quantity: number }) => count + item.quantity, 0),
+        subtotal: order.subtotal,
+        total: order.total,
+        discount: order.discount,
+      });
       setSaleResult({
         orderNumber: order.orderNumber,
         total: order.total,

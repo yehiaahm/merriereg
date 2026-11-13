@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/AddToCartError';
+import posthog from 'posthog-js';
 
 export function useWishlistToggle(productId: string, initialWishlisted: boolean) {
   const router = useRouter();
@@ -29,6 +30,7 @@ export function useWishlistToggle(productId: string, initialWishlisted: boolean)
       show(data.error ?? 'Could not update wishlist.', 'error');
       return;
     }
+    posthog.capture(next ? 'wishlist_item_added' : 'wishlist_item_removed', { product_id: productId });
     show(next ? 'Saved to your wishlist.' : 'Removed from wishlist.');
     router.refresh();
   }

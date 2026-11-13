@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 
 type VariantForm = {
   id?: string;
@@ -183,6 +184,12 @@ export function ProductForm({
       return;
     }
 
+    posthog.capture('admin_product_saved', {
+      action: isEdit ? 'updated' : 'created',
+      product_status: status,
+      variant_count: variants.length,
+      image_count: payload.images.length,
+    });
     router.push('/admin/products');
     router.refresh();
   }

@@ -1,21 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import posthog from 'posthog-js';
 
 export function SiteHeaderNav({
   itemCount,
   wishlistCount,
+  customerId,
   customerName,
+  customerEmail,
   isAdmin,
 }: {
   itemCount: number;
   wishlistCount: number;
+  customerId: string | null;
   customerName: string | null;
+  customerEmail: string | null;
   isAdmin: boolean;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!customerId || !customerEmail || !customerName) return;
+
+    posthog.identify(customerId, {
+      email: customerEmail,
+      name: customerName,
+      is_admin: isAdmin,
+    });
+  }, [customerEmail, customerId, customerName, isAdmin]);
   // On the homepage the nav floats transparently over the video hero until the page scrolls.
   // A data attribute (not a class) so React re-renders never wipe the `mr-nav--scrolled` class.
   const overHero = usePathname() === '/' && !mobileMenuOpen;

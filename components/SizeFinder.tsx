@@ -22,6 +22,7 @@ import {
   type FitPreference,
   type SizeChartData,
 } from '@/lib/sizing/measurements';
+import posthog from 'posthog-js';
 
 type Variant = { size: string; color: string; stock: number; active: boolean };
 
@@ -124,6 +125,7 @@ export function SizeFinder({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!chart) return;
     const result = validateMeasurements(values, fields);
     setErrors(result.errors);
     if (!result.valid) {
@@ -131,11 +133,23 @@ export function SizeFinder({
       if (firstBad) document.getElementById(`${uid}-${firstBad}`)?.focus();
       return;
     }
+    const nextRecommendation = recommendSize(
+      chart,
+      { measurements: result.measurements, preferredFit: fit === 'REGULAR' ? null : fit },
+      variants,
+      selectedColor
+    );
+    posthog.capture('size_recommendation_generated', {
+      recommendation_status: nextRecommendation.status,
+      recommendation_confidence: nextRecommendation.confidence ?? null,
+      preferred_fit: fit,
+    });
     setSubmitted(result.measurements);
     setSubmittedFit(fit);
   }
 
   function apply(size: string) {
+    posthog.capture('size_recommendation_applied', { selected_size: size });
     onApply(size);
     setOpen(false);
   }

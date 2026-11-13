@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { formatEGP } from '@/lib/money';
 import { useToast } from '@/components/AddToCartError';
+import posthog from 'posthog-js';
 
 type Item = {
   id: string;
@@ -39,6 +40,12 @@ export function CartItemRow({ item }: { item: Item }) {
       show(data.error ?? 'Could not update quantity.', 'error');
       return;
     }
+    posthog.capture('cart_quantity_updated', {
+      quantity: nextQuantity,
+      variant_size: item.variant.size,
+      variant_color: item.variant.color,
+      unit_price: item.variant.price,
+    });
     router.refresh();
   }
 
@@ -55,6 +62,12 @@ export function CartItemRow({ item }: { item: Item }) {
       show(data.error ?? 'Could not remove item.', 'error');
       return;
     }
+    posthog.capture('cart_item_removed', {
+      quantity: item.quantity,
+      variant_size: item.variant.size,
+      variant_color: item.variant.color,
+      unit_price: item.variant.price,
+    });
     router.refresh();
   }
 

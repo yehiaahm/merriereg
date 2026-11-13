@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
+import { flushPostHogLogs, posthogLogger, SeverityNumber } from '@/instrumentation';
 import { prisma } from '@/lib/prisma';
 import { orderStatusUpdateSchema } from '@/lib/validation';
 import { getCurrentCustomer } from '@/lib/customer-auth';
@@ -120,6 +121,17 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
     throw err;
   }
+
+  posthogLogger?.emit({
+    body: 'admin_order_status_updated',
+    severityNumber: SeverityNumber.INFO,
+    attributes: {
+      previous_status: order.status,
+      next_status: nextStatus,
+      payment_method: order.paymentMethod,
+    },
+  });
+  after(flushPostHogLogs);
 
   return NextResponse.json({ order: updated });
 }

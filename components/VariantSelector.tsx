@@ -9,6 +9,7 @@ import { flyToCart } from '@/lib/fly-to-cart';
 import { SizeFinder } from '@/components/SizeFinder';
 import { ProductGallery } from '@/components/ProductGallery';
 import type { SizeChartData } from '@/lib/sizing/measurements';
+import posthog from 'posthog-js';
 
 type Variant = {
   id: string;
@@ -129,6 +130,13 @@ export function VariantSelector({
         show(data.error ?? 'Could not add to cart.', 'error');
         return;
       }
+      posthog.capture('product_added_to_cart', {
+        source: shouldRedirect ? 'buy_now' : 'product_detail',
+        quantity,
+        variant_size: selectedVariant.size,
+        variant_color: selectedVariant.color,
+        unit_price: selectedVariant.price,
+      });
       if (shouldRedirect) {
         router.push('/checkout');
       } else {

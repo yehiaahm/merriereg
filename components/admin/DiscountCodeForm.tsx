@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { describeDiscountRule } from '@/lib/promotions';
+import posthog from 'posthog-js';
 
 export type DiscountCodeFormValue = {
   id?: string;
@@ -149,6 +150,12 @@ export function DiscountCodeForm({ initial = EMPTY_DISCOUNT_CODE }: { initial?: 
     setSubmitting(false);
     if (!res.ok) return setError(data.error ?? 'Could not save the discount code.');
 
+    posthog.capture('admin_discount_code_saved', {
+      action: isEdit ? 'updated' : 'created',
+      discount_type: form.type,
+      is_active: form.active,
+      is_public: form.showInBar || form.showAtCheckout,
+    });
     router.push('/admin/discount-codes');
     router.refresh();
   }
@@ -160,6 +167,7 @@ export function DiscountCodeForm({ initial = EMPTY_DISCOUNT_CODE }: { initial?: 
     const res = await fetch(`/api/admin/discount-codes/${initial.id}`, { method: 'DELETE' });
     setDeleting(false);
     if (!res.ok) return setError('Could not delete the discount code.');
+    posthog.capture('admin_discount_code_deleted');
     router.push('/admin/discount-codes');
     router.refresh();
   }

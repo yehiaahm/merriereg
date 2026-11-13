@@ -15,7 +15,12 @@ export const metadata: Metadata = {
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await getCurrentCustomer();
   return (
-    <AdminShell adminName={admin?.name}>
+    <AdminShell
+      adminId={admin?.id ?? null}
+      adminName={admin?.name ?? null}
+      adminEmail={admin?.email ?? null}
+      isAdmin={admin?.isAdmin ?? false}
+    >
       <AdminPushSync />
       {children}
     </AdminShell>

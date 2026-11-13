@@ -9,10 +9,12 @@
 // production build — see React's own console warning), so 'unsafe-eval' is
 // scoped to development only rather than weakening the production policy.
 const isDev = process.env.NODE_ENV !== 'production';
+const posthogHost = process.env.NEXT_PUBLIC_POSTHOG_HOST;
+const posthogAssetsHost = posthogHost?.replace('.i.posthog.com', '-assets.i.posthog.com');
 
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${posthogAssetsHost ? ` ${posthogAssetsHost}` : ''}`,
   // Google Fonts stylesheet, loaded via a <link> in app/layout.tsx.
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Product images are admin-pasted links to arbitrary hosts (see images.remotePatterns below);
@@ -22,7 +24,8 @@ const CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   // nominatim.openstreetmap.org: reverse-geocodes the Delivery Location picker's
   // confirmed coordinates into a human-readable address (no API key needed).
-  "connect-src 'self' https://nominatim.openstreetmap.org",
+  `connect-src 'self' https://nominatim.openstreetmap.org${posthogHost ? ` ${posthogHost}` : ''}`,
+  "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
