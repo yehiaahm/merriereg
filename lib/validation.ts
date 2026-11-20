@@ -119,6 +119,9 @@ export const variantInputSchema = z.object({
   stock: z.number().int().min(0),
   lowStockThreshold: z.number().int().min(0).optional(),
   active: z.boolean().optional(),
+}).refine((v) => v.compareAtPriceEGP == null || v.compareAtPriceEGP > v.priceEGP, {
+  message: 'Old price must be higher than the current price',
+  path: ['compareAtPriceEGP'],
 });
 
 export const productInputSchema = z.object({

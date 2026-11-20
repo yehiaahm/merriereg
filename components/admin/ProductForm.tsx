@@ -146,6 +146,13 @@ export function ProductForm({
       return;
     }
 
+    for (const v of variants) {
+      if (v.compareAtPriceEGP && !(Number(v.compareAtPriceEGP) > Number(v.priceEGP))) {
+        setError(`Old price must be higher than the current price (variant ${v.size || '?'} / ${v.color || '?'}).`);
+        return;
+      }
+    }
+
     const payload = {
       name,
       slug,
@@ -373,12 +380,59 @@ export function ProductForm({
               <input placeholder="Color (e.g. Black)" value={v.color} onChange={(e) => updateVariant(i, { color: e.target.value })} required />
               <input placeholder="Color hex (#000000)" value={v.colorHex} onChange={(e) => updateVariant(i, { colorHex: e.target.value })} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8 }}>
-              <input placeholder="SKU" value={v.sku} onChange={(e) => updateVariant(i, { sku: e.target.value })} required />
-              <input placeholder="Price (EGP)" type="number" min="0" step="0.01" value={v.priceEGP} onChange={(e) => updateVariant(i, { priceEGP: e.target.value })} required />
-              <input placeholder="Compare-at (EGP)" type="number" min="0" step="0.01" value={v.compareAtPriceEGP} onChange={(e) => updateVariant(i, { compareAtPriceEGP: e.target.value })} />
-              <input placeholder="Stock" type="number" min="0" value={v.stock} onChange={(e) => updateVariant(i, { stock: e.target.value })} required />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div className="field">
+                <label htmlFor={`sku-${i}`}>SKU</label>
+                <input id={`sku-${i}`} placeholder="SKU" value={v.sku} onChange={(e) => updateVariant(i, { sku: e.target.value })} required />
+              </div>
+              <div className="field">
+                <label htmlFor={`stock-${i}`}>Stock</label>
+                <input id={`stock-${i}`} placeholder="Stock" type="number" min="0" value={v.stock} onChange={(e) => updateVariant(i, { stock: e.target.value })} required />
+              </div>
             </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              <div className="field">
+                <label htmlFor={`price-${i}`}>Current price — what the customer pays (EGP)</label>
+                <input id={`price-${i}`} placeholder="e.g. 700" type="number" min="0" step="0.01" value={v.priceEGP} onChange={(e) => updateVariant(i, { priceEGP: e.target.value })} required />
+              </div>
+              <div className="field">
+                <label htmlFor={`old-price-${i}`}>Old price — shown crossed out (EGP, optional)</label>
+                <input id={`old-price-${i}`} placeholder="e.g. 1000 (leave empty for no discount)" type="number" min="0" step="0.01" value={v.compareAtPriceEGP} onChange={(e) => updateVariant(i, { compareAtPriceEGP: e.target.value })} />
+              </div>
+            </div>
+            {(() => {
+              const now = Number(v.priceEGP);
+              const was = Number(v.compareAtPriceEGP);
+              if (!v.compareAtPriceEGP) return null;
+              if (!(now > 0) || !(was > now)) {
+                return (
+                  <span style={{ fontSize: 12, color: 'var(--danger)' }}>
+                    Old price must be higher than the current price, otherwise it won&apos;t be shown.
+                  </span>
+                );
+              }
+              const pct = Math.round(((was - now) / was) * 100);
+              return (
+                <div style={{ fontSize: 13, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--ink-soft)' }}>Customers will see:</span>
+                  <strong>{now.toLocaleString('en-EG')} EGP</strong>
+                  <s style={{ color: 'var(--ink-soft)' }}>{was.toLocaleString('en-EG')} EGP</s>
+                  <span style={{ color: 'var(--danger)', fontWeight: 700 }}>-{pct}%</span>
+                </div>
+              );
+            })()}
+            {variants.length > 1 && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{ minHeight: 32, padding: '0 10px', fontSize: 12, alignSelf: 'flex-start' }}
+                onClick={() =>
+                  setVariants((prev) => prev.map((x) => ({ ...x, priceEGP: v.priceEGP, compareAtPriceEGP: v.compareAtPriceEGP })))
+                }
+              >
+                Apply these prices to all variants
+              </button>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
                 <input type="checkbox" checked={v.active} onChange={(e) => updateVariant(i, { active: e.target.checked })} />

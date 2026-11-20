@@ -72,6 +72,11 @@ export function FeaturedProductShowcase({
   }
 
   const { min, max, hasSale } = productPriceRange(product.variants);
+  // Old price of the cheapest on-sale variant, shown crossed out next to the price.
+  const cheapestSale = product.variants
+    .filter((v) => v.active && v.compareAtPrice && v.compareAtPrice > v.price)
+    .sort((a, b) => a.price - b.price)[0];
+  const minSaleWas = cheapestSale && min === max ? cheapestSale.compareAtPrice : null;
   const totalStock = productTotalStock(product.variants);
   const outOfStock = totalStock === 0;
   const isLimited = !outOfStock && totalStock <= 12;
@@ -162,7 +167,12 @@ export function FeaturedProductShowcase({
         </div>
 
         <div className="mr-feature-panel-cta">
-          <span className="mr-feature-price">{min === max ? formatEGP(min) : `${formatEGP(min)} – ${formatEGP(max)}`}</span>
+          <span className="mr-feature-price">
+            {min === max ? formatEGP(min) : `${formatEGP(min)} – ${formatEGP(max)}`}
+            {hasSale && minSaleWas != null && (
+              <s style={{ marginLeft: 10, fontSize: '0.6em', opacity: 0.6, fontWeight: 400 }}>{formatEGP(minSaleWas)}</s>
+            )}
+          </span>
           <span className={`mr-feature-stock${outOfStock ? ' mr-feature-stock--out' : ''}`}>{stockMessage}</span>
           <div className="mr-feature-actions">
             <Link href={`/product/${product.slug}`} className="mr-btn-primary">
