@@ -4,6 +4,8 @@ import { getSizeChartForProduct } from '@/lib/sizing/charts';
 import { getCurrentWishlist, wishlistedProductIds } from '@/lib/wishlist';
 import { VariantSelector } from '@/components/VariantSelector';
 import { WishlistButton } from '@/components/WishlistButton';
+import { MetaEvent } from '@/components/MetaEvent';
+import { piastresToEgp } from '@/lib/money';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -24,9 +26,22 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const [wishlist, sizeChart] = await Promise.all([getCurrentWishlist(), getSizeChartForProduct(product.id)]);
   const isWishlisted = wishlistedProductIds(wishlist).has(product.id);
+  const leadVariant = product.variants.find((v) => v.active && v.stock > 0) ?? product.variants[0];
 
   return (
     <main className="container" style={{ padding: '40px 24px 100px' }}>
+      {leadVariant && (
+        <MetaEvent
+          event="ViewContent"
+          params={{
+            content_type: 'product',
+            content_ids: [leadVariant.sku],
+            content_name: product.name,
+            value: piastresToEgp(leadVariant.price),
+            currency: 'EGP',
+          }}
+        />
+      )}
       {/* key: switching to another product always starts the size finder fresh. */}
       <VariantSelector
         key={product.id}

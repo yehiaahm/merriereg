@@ -87,6 +87,27 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
       )}
 
       <div style={{ border: '1px solid var(--line)', padding: 16, marginBottom: 28 }}>
+        <span className="eyebrow">Source</span>
+        {order.utmSource || order.fbclid ? (
+          <>
+            <p style={{ margin: '6px 0' }}>
+              <strong>{order.utmSource ?? (order.fbclid ? 'meta (click id only)' : '—')}</strong>
+              {order.utmMedium ? ` / ${order.utmMedium}` : ''}
+            </p>
+            <p style={{ margin: '2px 0', fontSize: 13, color: 'var(--ink-soft)' }}>
+              Campaign: {order.utmCampaign || '—'} · Ad: {order.utmContent || '—'}
+              {order.utmTerm ? ` · Term: ${order.utmTerm}` : ''}
+            </p>
+            {order.fbclid && (
+              <p style={{ margin: '2px 0', fontSize: 12, color: 'var(--ink-soft)' }}>Came from a Meta ad click (fbclid present).</p>
+            )}
+          </>
+        ) : (
+          <p style={{ margin: '6px 0', fontSize: 14, color: 'var(--ink-soft)' }}>Direct / organic (no ad tags).</p>
+        )}
+      </div>
+
+      <div style={{ border: '1px solid var(--line)', padding: 16, marginBottom: 28 }}>
         <span className="eyebrow">Payment</span>
         <p style={{ margin: '6px 0' }}>
           Method: <strong>{order.paymentMethod === 'COD' ? 'Cash on Delivery' : 'Online Payment'}</strong> — Status:{' '}

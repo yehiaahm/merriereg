@@ -1,11 +1,21 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
-import { formatEGP } from '@/lib/money';
+import { formatEGP, piastresToEgp } from '@/lib/money';
 import { getCurrentCustomer } from '@/lib/customer-auth';
 import { OrderStatusTimeline } from '@/components/OrderStatusTimeline';
+import { MetaEvent } from '@/components/MetaEvent';
 
 export const metadata = { title: 'Order Confirmation' };
+
+// Only report a Purchase to Meta when the order really counts as one (COD is
+// placed on submit; a card order once Paymob marks it PAID) and the page is
+// being seen right after checkout — not when someone reopens an old link.
+const PURCHASE_EVENT_WINDOW_MS = 24 * 60 * 60 * 1000;
+function shouldReportPurchase(order: { paymentMethod: string; paymentStatus: string; createdAt: Date }): boolean {
+  const counts = order.paymentMethod === 'COD' || order.paymentStatus === 'PAID';
+  return counts && Date.now() - order.createdAt.getTime() < PURCHASE_EVENT_WINDOW_MS;
+}
 export const dynamic = 'force-dynamic';
 
 export default async function OrderConfirmationPage({
@@ -37,10 +47,28 @@ export default async function OrderConfirmationPage({
   }
 
   const hasManualAddress = !!(order.shippingStreet && order.shippingBuilding);
+  const reportPurchase = shouldReportPurchase(order);
   const hasDeliveryLocation = order.deliveryLat !== null && order.deliveryLng !== null;
 
   return (
     <main className="container" style={{ padding: '48px 24px 100px', maxWidth: 780, margin: '0 auto' }}>
+      {reportPurchase && (
+        <MetaEvent
+          event="Purchase"
+          // Same id as the server-side Conversions API event → Meta counts it once.
+          eventId={order.id}
+          onceKey={`purchase_${order.id}`}
+          params={{
+            content_type: 'product',
+            content_ids: order.items.map((i) => i.sku),
+            contents: order.items.map((i) => ({ id: i.sku, quantity: i.quantity, item_price: piastresToEgp(i.unitPrice) })),
+            num_items: order.items.reduce((n, i) => n + i.quantity, 0),
+            value: piastresToEgp(order.total),
+            currency: 'EGP',
+            order_id: order.orderNumber,
+          }}
+        />
+      )}
       {paymentError && (
         <div style={{ background: '#fdecea', border: '1px solid var(--danger)', padding: 14, marginBottom: 24, fontSize: 14 }}>
           Your order was created, but we couldn&apos;t start the online payment. Please contact us or try again — your items

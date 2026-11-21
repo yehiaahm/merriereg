@@ -1,7 +1,9 @@
-// The storefront never embeds any third-party iframe/script (Paymob's hosted
-// payment page is a full-page redirect via window.location.href, not an
-// iframe on our own pages — see components/CheckoutForm.tsx), so the CSP
-// below can stay tight. script-src/style-src keep 'unsafe-inline' because
+// The storefront embeds no third-party iframe (Paymob's hosted payment page is
+// a full-page redirect via window.location.href, not an iframe on our own
+// pages — see components/CheckoutForm.tsx). The only third-party script is
+// Meta's Pixel (connect.facebook.net), loaded by lib/meta/pixel-client.ts
+// only when NEXT_PUBLIC_META_PIXEL_ID is set; its beacons go to
+// www.facebook.com. Everything else stays tight. script-src/style-src keep 'unsafe-inline' because
 // Next.js's own hydration bootstrap and this app's inline `style={{}}` usage
 // need it; there is no dangerouslySetInnerHTML anywhere in the codebase, so
 // the main XSS backstop is React's default output escaping, not the CSP.
@@ -14,7 +16,7 @@ const posthogAssetsHost = posthogHost?.replace('.i.posthog.com', '-assets.i.post
 
 const CSP = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${posthogAssetsHost ? ` ${posthogAssetsHost}` : ''}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${posthogAssetsHost ? ` ${posthogAssetsHost}` : ''} https://connect.facebook.net`,
   // Google Fonts stylesheet, loaded via a <link> in app/layout.tsx.
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Product images are admin-pasted links to arbitrary hosts (see images.remotePatterns below);
@@ -24,7 +26,7 @@ const CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   // nominatim.openstreetmap.org: reverse-geocodes the Delivery Location picker's
   // confirmed coordinates into a human-readable address (no API key needed).
-  `connect-src 'self' https://nominatim.openstreetmap.org${posthogHost ? ` ${posthogHost}` : ''}`,
+  `connect-src 'self' https://nominatim.openstreetmap.org${posthogHost ? ` ${posthogHost}` : ''} https://www.facebook.com https://connect.facebook.net`,
   "worker-src 'self' blob:",
   "object-src 'none'",
   "base-uri 'self'",

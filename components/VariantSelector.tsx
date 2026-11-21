@@ -3,13 +3,22 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { formatEGP } from '@/lib/money';
+import { formatEGP, piastresToEgp } from '@/lib/money';
 import { useToast } from '@/components/AddToCartError';
 import { flyToCart } from '@/lib/fly-to-cart';
 import { SizeFinder } from '@/components/SizeFinder';
 import { ProductGallery } from '@/components/ProductGallery';
 import type { SizeChartData } from '@/lib/sizing/measurements';
 import posthog from 'posthog-js';
+import { trackMeta } from '@/lib/meta/pixel-client';
+import { SHIPPING_ZONES } from '@/lib/shipping';
+
+// Delivery facts shown next to Buy Now, derived from the real shipping table
+// (lib/shipping.ts) so they can never drift from what checkout charges.
+const LOCAL_SHIPPING = SHIPPING_ZONES[0];
+const OTHER_RATES = SHIPPING_ZONES.slice(1).map((z) => z.rate);
+const MIN_OTHER_RATE = Math.min(...OTHER_RATES);
+const MAX_OTHER_RATE = Math.max(...OTHER_RATES);
 
 type Variant = {
   id: string;
@@ -130,6 +139,14 @@ export function VariantSelector({
         show(data.error ?? 'Could not add to cart.', 'error');
         return;
       }
+      trackMeta('AddToCart', {
+        content_type: 'product',
+        content_ids: [selectedVariant.sku],
+        content_name: productName,
+        contents: [{ id: selectedVariant.sku, quantity, item_price: piastresToEgp(selectedVariant.price) }],
+        value: piastresToEgp(selectedVariant.price * quantity),
+        currency: 'EGP',
+      });
       posthog.capture('product_added_to_cart', {
         source: shouldRedirect ? 'buy_now' : 'product_detail',
         quantity,
@@ -324,6 +341,28 @@ export function VariantSelector({
             </button>
           )}
         </div>
+
+        <ul
+          aria-label="Delivery and payment"
+          style={{
+            listStyle: 'none',
+            margin: 0,
+            padding: '14px 16px',
+            border: '1px solid var(--line)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 6,
+            fontSize: 13,
+          }}
+        >
+          <li>
+            <strong>Cash on Delivery</strong> — pay when your order arrives.
+          </li>
+          <li>
+            <strong>Delivery to all governorates.</strong> Shipping {formatEGP(LOCAL_SHIPPING.rate)} in{' '}
+            {LOCAL_SHIPPING.label}, {formatEGP(MIN_OTHER_RATE)}–{formatEGP(MAX_OTHER_RATE)} elsewhere.
+          </li>
+        </ul>
 
         {selectedVariant && (
           <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>SKU: {selectedVariant.sku}</p>

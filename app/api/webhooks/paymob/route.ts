@@ -3,6 +3,7 @@ import { flushPostHogLogs, posthogLogger, SeverityNumber } from '@/instrumentati
 import { prisma } from '@/lib/prisma';
 import { verifyPaymobHmac } from '@/lib/payment/paymob';
 import { scheduleNewOrderNotification } from '@/lib/push/schedule';
+import { sendMetaPurchase, siteOrigin } from '@/lib/meta/capi';
 
 /**
  * Paymob "Transaction processed" webhook.
@@ -123,6 +124,27 @@ export async function POST(req: NextRequest) {
     console.error(`[paymob] payment received for ${order.status} order ${order.orderNumber} — refund needed`);
   } else if (success) {
     scheduleNewOrderNotification(order.id);
+
+    // Meta Conversions API Purchase for a now-paid card order (no-op unless
+    // configured). This is a server-to-server call with no shopper browser
+    // behind it, so it relies on the _fbp/_fbc ids and user agent saved on the
+    // order at checkout. Same event_id (order id) as the order page's browser Pixel.
+    const orderId = order.id;
+    const siteUrl = siteOrigin(req.headers);
+    after(async () => {
+      try {
+        const paid = await prisma.order.findUnique({ where: { id: orderId }, include: { items: true } });
+        if (!paid) return;
+        await sendMetaPurchase(paid, {
+          userAgent: paid.metaUserAgent ?? undefined,
+          fbp: paid.metaFbp,
+          fbc: paid.metaFbc,
+          eventSourceUrl: siteUrl ? `${siteUrl}/checkout` : undefined,
+        });
+      } catch (err) {
+        console.error('[meta-capi] webhook Purchase failed:', err instanceof Error ? err.message : err);
+      }
+    });
   }
 
   return NextResponse.json({ received: true });

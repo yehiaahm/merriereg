@@ -7,7 +7,9 @@ import { checkoutSchema } from '@/lib/validation';
 import { createOrderFromCart, CheckoutError } from '@/lib/orders';
 import { createPaymobPaymentUrl, isPaymobConfigured } from '@/lib/payment/paymob';
 import { scheduleNewOrderNotification } from '@/lib/push/schedule';
-import { rateLimit, rateLimitKey } from '@/lib/rate-limit';
+import { clientIp, rateLimit, rateLimitKey } from '@/lib/rate-limit';
+import { ATTRIBUTION_COOKIE, cleanMetaCookie, fbcFromFbclid, parseAttribution } from '@/lib/meta/attribution';
+import { sendMetaPurchase, siteOrigin } from '@/lib/meta/capi';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,9 +45,29 @@ export async function POST(req: NextRequest) {
 
   const customer = await getCurrentCustomer();
 
+  // Ad attribution from first-party cookies (set by components/MetaPixel.tsx
+  // and Meta's own Pixel). Untrusted browser input — parseAttribution and
+  // cleanMetaCookie re-validate and length-cap every value.
+  const attr = parseAttribution(req.cookies.get(ATTRIBUTION_COOKIE)?.value);
+  const metaFbp = cleanMetaCookie(req.cookies.get('_fbp')?.value);
+  const metaFbc =
+    cleanMetaCookie(req.cookies.get('_fbc')?.value) ?? (attr?.fbclid ? fbcFromFbclid(attr.fbclid, attr.ts) : undefined);
+  const userAgent = req.headers.get('user-agent')?.slice(0, 500) || undefined;
+
   let order;
   try {
-    order = await createOrderFromCart(cart, input, customer?.id);
+    order = await createOrderFromCart(cart, input, customer?.id, {
+      utmSource: attr?.utm_source,
+      utmMedium: attr?.utm_medium,
+      utmCampaign: attr?.utm_campaign,
+      utmContent: attr?.utm_content,
+      utmTerm: attr?.utm_term,
+      fbclid: attr?.fbclid,
+      metaFbp,
+      metaFbc,
+      // Kept for the card-payment Purchase sent later from the Paymob webhook.
+      metaUserAgent: userAgent,
+    });
   } catch (err) {
     if (err instanceof CheckoutError) {
       return NextResponse.json({ error: err.message }, { status: 409 });
@@ -70,6 +92,22 @@ export async function POST(req: NextRequest) {
   // slow or failing push service can never delay or break checkout.
   if (input.paymentMethod === 'COD') {
     scheduleNewOrderNotification(order.id);
+
+    // Meta Conversions API Purchase (no-op unless configured). A COD order
+    // counts as a purchase once placed; card orders are sent from the Paymob
+    // webhook once paid. Runs after the response — never delays checkout.
+    const siteUrl = siteOrigin(req.headers);
+    const placedOrder = order;
+    const ip = clientIp(req);
+    after(() =>
+      sendMetaPurchase(placedOrder, {
+        clientIp: ip,
+        userAgent,
+        fbp: metaFbp,
+        fbc: metaFbc,
+        eventSourceUrl: siteUrl ? `${siteUrl}/checkout` : undefined,
+      })
+    );
   }
 
   if (input.paymentMethod === 'PAYMOB_CARD') {

@@ -299,6 +299,24 @@ model Order {
   // lib/push/notify-order.ts.
   adminNotifiedAt DateTime?
 
+  // Marketing attribution: the last ad touch (UTM tags / Meta fbclid) seen
+  // before checkout, from the first-party cookie set by components/MetaPixel.tsx.
+  // All optional — null for direct/organic orders and for orders placed
+  // before this was added. metaFbp/metaFbc are Meta's own browser ids, kept
+  // so a later server-side event (Paymob webhook) can still be matched to the
+  // ad click; metaUserAgent is the shopper's browser user agent at checkout,
+  // which Meta requires on website events and the webhook doesn't have.
+  // See lib/meta/attribution.ts and lib/meta/capi.ts.
+  utmSource     String?
+  utmMedium     String?
+  utmCampaign   String?
+  utmContent    String?
+  utmTerm       String?
+  fbclid        String?
+  metaFbp       String?
+  metaFbc       String?
+  metaUserAgent String?
+
   items    OrderItem[]
   payments Payment[]
 
@@ -308,6 +326,7 @@ model Order {
   @@index([status])
   @@index([paymentStatus])
   @@index([customerId])
+  @@index([utmSource])
 }
 
 model OrderItem {

@@ -59,6 +59,7 @@ Health check: `GET /health` — pings the database and returns `{status:"ok"}` /
 | `NEXT_PUBLIC_SITE_URL` | No | Used for absolute URLs (e.g. Paymob billing data). |
 | `PAYMOB_API_KEY` / `PAYMOB_INTEGRATION_ID` / `PAYMOB_IFRAME_ID` / `PAYMOB_HMAC_SECRET` | No | Leave unset to run Cash-on-Delivery only — see below. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | No | Enables admin order push notifications — see "Admin order push notifications". |
+| `NEXT_PUBLIC_META_PIXEL_ID` / `META_PIXEL_ID` / `META_CAPI_ACCESS_TOKEN` | No | Enables Meta Pixel + Conversions API — see "Meta Pixel, Conversions API and ad attribution". |
 
 `scripts/start.mjs` checks for the three required variables before the server
 starts and exits with a clear error naming exactly what's missing, rather than
@@ -202,6 +203,57 @@ triggers, card-vs-COD timing, outage/retry/expiry handling, a real VAPID-signed 
 encrypted push decrypted by a local fake push service, the service worker's
 push/tap behaviour, the post-login redirect sanitiser and the endpoint allowlist.
 Actual OS-level delivery to a physical phone can only be confirmed on a device.
+
+## Meta Pixel, Conversions API and ad attribution
+
+Tracks the shopping funnel for Meta ads and records which ad each order came
+from. Everything is **off until the env vars are set** — with them blank the
+store behaves exactly as before (attribution cookies and the Admin "Source"
+box still work, since they don't depend on Meta).
+
+**What it does**
+
+| Where | Browser Pixel event | Server (Conversions API) |
+|---|---|---|
+| Every storefront page (incl. client-side navigation) | `PageView` | — |
+| Product page | `ViewContent` | — |
+| Add to Cart / Buy Now | `AddToCart` | — |
+| Checkout page | `InitiateCheckout` | — |
+| Order confirmation (COD, or card once PAID) | `Purchase` (event id = order id) | `Purchase` with the same event id, sent after the checkout response (COD) or from the Paymob webhook (card) |
+
+Meta de-duplicates the browser and server `Purchase` by the shared event id.
+The Pixel is never loaded on `/admin`.
+
+- **Attribution:** `components/MetaPixel.tsx` saves `utm_*` + `fbclid` from the
+  landing URL into a first-party `mr_attr` cookie (30 days, last ad touch
+  wins). Checkout stores them on the order (`utmSource` … `fbclid`, plus Meta's
+  `_fbp`/`_fbc` ids and the shopper's user agent, which the card-payment
+  webhook needs for its server event) and **Admin → Orders → order** shows a
+  "Source" box.
+- **Privacy:** phone, email, name and city are SHA-256 hashed on the server
+  before being sent to Meta (as Meta requires); nothing raw leaves the server.
+- **Never breaks checkout:** server events run in `after()` with an 8 s timeout
+  and swallow their own errors; browser calls are wrapped in try/catch.
+
+**Setup**
+
+1. Meta Events Manager → *Connect data* → *Web* → create a dataset (Pixel) for
+   the store and copy its ID.
+2. Same dataset → *Settings* → *Conversions API* → *Generate access token*.
+3. On Railway's Variables tab set `NEXT_PUBLIC_META_PIXEL_ID` and
+   `META_PIXEL_ID` (both the ID) and `META_CAPI_ACCESS_TOKEN` (secret).
+   `NEXT_PUBLIC_…` is baked in at build time, so **redeploy** afterwards.
+4. Verify: set `META_TEST_EVENT_CODE` from Events Manager → *Test events*,
+   browse a product, add to cart, place a test COD order, and check every event
+   arrives (Purchase should show "Deduplicated" browser + server). Then remove
+   `META_TEST_EVENT_CODE` and cancel the test order in Admin.
+5. Ads: put this in the ad's *URL parameters* field so orders are tagged:
+   `utm_source=meta&utm_medium=paid_social&utm_campaign=<campaign>&utm_content={{ad.name}}`
+
+The migration `add_order_attribution` (nullable columns only) is applied
+automatically on the next start by `scripts/start.mjs`.
+
+Tests: `npm run test:meta`.
 
 ## Smart Size Finder ("Find my size")
 

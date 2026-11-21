@@ -29,6 +29,19 @@ export function generateOrderNumber(): string {
 
 type CheckoutInput = z.infer<typeof checkoutSchema>;
 
+/** Ad-source fields saved on the order (see lib/meta/attribution.ts). All optional. */
+export type OrderAttribution = {
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  utmContent?: string;
+  utmTerm?: string;
+  fbclid?: string;
+  metaFbp?: string;
+  metaFbc?: string;
+  metaUserAgent?: string;
+};
+
 /**
  * Creates a real order from a cart, inside a single transaction:
  *  - re-reads every variant fresh from the DB (never trusts cart snapshot
@@ -42,7 +55,12 @@ type CheckoutInput = z.infer<typeof checkoutSchema>;
  * guarantees no partial state — either the whole order + stock decrement
  * succeeds, or nothing changes.
  */
-export async function createOrderFromCart(cart: CartWithItems, input: CheckoutInput, customerId?: string | null) {
+export async function createOrderFromCart(
+  cart: CartWithItems,
+  input: CheckoutInput,
+  customerId?: string | null,
+  attribution: OrderAttribution = {}
+) {
   if (cart.items.length === 0) {
     throw new CheckoutError('Your cart is empty.');
   }
@@ -168,6 +186,15 @@ export async function createOrderFromCart(cart: CartWithItems, input: CheckoutIn
         total,
         paymentMethod: input.paymentMethod,
         paymentStatus: 'PENDING',
+        utmSource: attribution.utmSource ?? null,
+        utmMedium: attribution.utmMedium ?? null,
+        utmCampaign: attribution.utmCampaign ?? null,
+        utmContent: attribution.utmContent ?? null,
+        utmTerm: attribution.utmTerm ?? null,
+        fbclid: attribution.fbclid ?? null,
+        metaFbp: attribution.metaFbp ?? null,
+        metaFbc: attribution.metaFbc ?? null,
+        metaUserAgent: attribution.metaUserAgent ?? null,
         items: { create: orderItemsData },
         payments: {
           create: {
