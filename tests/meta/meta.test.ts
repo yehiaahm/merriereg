@@ -12,6 +12,7 @@ import {
   serializeAttribution,
 } from '../../lib/meta/attribution';
 import { buildPurchaseEvent, normalizeEgyptPhone, siteOrigin } from '../../lib/meta/capi';
+import { isAdminPath } from '../../lib/meta/pixel-client';
 
 const sha = (v: string) => createHash('sha256').update(v).digest('hex');
 
@@ -122,6 +123,16 @@ describe('conversions api payload', () => {
     assert.equal(event.user_data.ln, undefined);
     assert.equal(event.event_source_url, 'https://shop.example/checkout');
     assert.equal(event.custom_data.num_items, 2);
+  });
+});
+
+describe('admin guard', () => {
+  test('treats /admin and its sub-pages as admin, nothing else', () => {
+    assert.equal(isAdminPath('/admin'), true);
+    assert.equal(isAdminPath('/admin/orders/abc'), true);
+    assert.equal(isAdminPath('/'), false);
+    assert.equal(isAdminPath('/administrator-hoodie'), false);
+    assert.equal(isAdminPath('/product/admin'), false);
   });
 });
 
