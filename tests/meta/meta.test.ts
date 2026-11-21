@@ -137,17 +137,26 @@ describe('admin guard', () => {
 });
 
 describe('siteOrigin', () => {
-  test('prefers NEXT_PUBLIC_SITE_URL, else the request host, and rejects junk hosts', () => {
-    const prev = process.env.NEXT_PUBLIC_SITE_URL;
+  test('prefers a real NEXT_PUBLIC_SITE_URL, then Railway domain, then request host', () => {
+    const prev = { site: process.env.NEXT_PUBLIC_SITE_URL, rw: process.env.RAILWAY_PUBLIC_DOMAIN };
     try {
+      delete process.env.RAILWAY_PUBLIC_DOMAIN;
       process.env.NEXT_PUBLIC_SITE_URL = 'https://shop.example/';
       assert.equal(siteOrigin(new Headers({ host: 'other.example' })), 'https://shop.example');
+      // A leftover local value (what production has today) is ignored.
+      process.env.NEXT_PUBLIC_SITE_URL = 'http://localhost:3000';
+      process.env.RAILWAY_PUBLIC_DOMAIN = 'merriereg-production.up.railway.app';
+      assert.equal(siteOrigin(new Headers({ host: 'localhost:8080' })), 'https://merriereg-production.up.railway.app');
+      delete process.env.RAILWAY_PUBLIC_DOMAIN;
       delete process.env.NEXT_PUBLIC_SITE_URL;
-      assert.equal(siteOrigin(new Headers({ host: 'merriereg-production.up.railway.app' })), 'https://merriereg-production.up.railway.app');
+      assert.equal(siteOrigin(new Headers({ host: 'shop.example' })), 'https://shop.example');
+      assert.equal(siteOrigin(new Headers({ host: 'localhost:3000' })), undefined);
       assert.equal(siteOrigin(new Headers({ host: 'evil"/><x' })), undefined);
     } finally {
-      if (prev === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
-      else process.env.NEXT_PUBLIC_SITE_URL = prev;
+      for (const [k, v] of [['NEXT_PUBLIC_SITE_URL', prev.site], ['RAILWAY_PUBLIC_DOMAIN', prev.rw]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
     }
   });
 });

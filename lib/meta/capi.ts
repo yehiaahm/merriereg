@@ -26,17 +26,29 @@ export function isMetaCapiConfigured(): boolean {
 
 const sha256 = (v: string) => createHash('sha256').update(v).digest('hex');
 
+const HOST_RE = /^[a-z0-9.-]+(:\d+)?$/i;
+const isLocalHost = (host: string) => /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(host);
+
 /**
  * The store's public origin, for event_source_url (Meta requires it on website
- * events). NEXT_PUBLIC_SITE_URL when set, otherwise the host the request came
- * in on (Railway's edge only routes our own domains here). Only ever sent to
- * Meta as a reporting string.
+ * events). In order: NEXT_PUBLIC_SITE_URL (ignored if it still points at
+ * localhost, as a copied .env often does), Railway's public domain, then the
+ * host the request came in on (Railway's edge only routes our own domains
+ * here). Only ever sent to Meta as a reporting string.
  */
 export function siteOrigin(headers: Headers): string | undefined {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '');
-  if (configured) return configured;
+  if (configured) {
+    try {
+      if (!isLocalHost(new URL(configured).host)) return configured;
+    } catch {
+      // Not a valid URL — fall through.
+    }
+  }
+  const railway = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
+  if (railway && HOST_RE.test(railway)) return `https://${railway}`;
   const host = (headers.get('x-forwarded-host') ?? headers.get('host'))?.split(',')[0]?.trim();
-  return host && /^[a-z0-9.-]+(:\d+)?$/i.test(host) ? `https://${host}` : undefined;
+  return host && HOST_RE.test(host) && !isLocalHost(host) ? `https://${host}` : undefined;
 }
 
 /** 010xxxxxxxx (the format lib/validation.ts stores) → 2010xxxxxxxx, digits only. */
