@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
   }
-  const { variantId, quantity } = parsed.data;
+  const { variantId, quantity, mode } = parsed.data;
 
   const variant = await prisma.productVariant.findUnique({
     where: { id: variantId },
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (!cart) return NextResponse.json({ error: 'Could not create cart.' }, { status: 500 });
 
   const existing = cart.items.find((i) => i.variantId === variantId);
-  const nextQuantity = (existing?.quantity ?? 0) + quantity;
+  const nextQuantity = mode === 'set' ? quantity : (existing?.quantity ?? 0) + quantity;
 
   if (variant.stock < nextQuantity) {
     return NextResponse.json(

@@ -11,7 +11,7 @@ import {
   parseAttribution,
   serializeAttribution,
 } from '../../lib/meta/attribution';
-import { buildPurchaseEvent, normalizeEgyptPhone, siteOrigin } from '../../lib/meta/capi';
+import { buildInitiateCheckoutEvent, buildPurchaseEvent, normalizeEgyptPhone, siteOrigin } from '../../lib/meta/capi';
 import { isAdminPath } from '../../lib/meta/pixel-client';
 
 const sha = (v: string) => createHash('sha256').update(v).digest('hex');
@@ -76,7 +76,9 @@ describe('conversions api payload', () => {
       {
         id: 'ord_1',
         orderNumber: 'MR261119-12345678',
-        total: 96900,
+        // 899 product − 0 discount; the order total (969) includes 70 shipping.
+        subtotal: 89900,
+        discount: 0,
         customerName: 'Omar Hassan',
         customerPhone: '01012345678',
         customerEmail: 'Omar@Example.com',
@@ -89,7 +91,7 @@ describe('conversions api payload', () => {
     assert.equal(event.event_name, 'Purchase');
     assert.equal(event.event_id, 'ord_1');
     assert.equal(event.event_time, 1_700_000_000);
-    assert.equal(event.custom_data.value, 969);
+    assert.equal(event.custom_data.value, 899);
     assert.equal(event.custom_data.currency, 'EGP');
     assert.deepEqual(event.custom_data.content_ids, ['MR-CREWNECK-V2-BRN-M']);
     assert.deepEqual(event.user_data.ph, [sha('201012345678')]);
@@ -108,7 +110,8 @@ describe('conversions api payload', () => {
       {
         id: 'ord_2',
         orderNumber: 'MR261121-1',
-        total: 10000,
+        subtotal: 10000,
+        discount: 0,
         customerName: 'Mona',
         customerPhone: '01112345678',
         customerEmail: null,
@@ -123,6 +126,50 @@ describe('conversions api payload', () => {
     assert.equal(event.user_data.ln, undefined);
     assert.equal(event.event_source_url, 'https://shop.example/checkout');
     assert.equal(event.custom_data.num_items, 2);
+  });
+});
+
+describe('conversions api value and InitiateCheckout', () => {
+  test('Purchase value is products after discount, excluding shipping', () => {
+    const event = buildPurchaseEvent(
+      {
+        id: 'ord_3',
+        orderNumber: 'MR1',
+        subtotal: 149800,
+        discount: 14980,
+        customerName: 'A',
+        customerPhone: '01012345678',
+        customerEmail: null,
+        shippingGovernorate: 'Cairo',
+        items: [{ sku: 'S1', quantity: 2, unitPrice: 74900 }],
+      },
+      {}
+    );
+    assert.equal(event.custom_data.value, 1348.2);
+  });
+
+  test('InitiateCheckout carries the shared event id, cart value and only browser ids for guests', () => {
+    const event = buildInitiateCheckoutEvent(
+      { eventId: 'ic_abc', items: [{ sku: 'MR-CREWNECK-WHT-M', quantity: 1, unitPrice: 74900 }], subtotal: 74900 },
+      { clientIp: '41.0.0.2', userAgent: 'UA', fbp: 'fb.1.1.222', fbc: 'not-valid' },
+      1_700_000_000_000
+    );
+    assert.equal(event.event_name, 'InitiateCheckout');
+    assert.equal(event.event_id, 'ic_abc');
+    assert.equal(event.custom_data.value, 749);
+    assert.equal(event.custom_data.num_items, 1);
+    assert.equal(event.user_data.fbp, 'fb.1.1.222');
+    assert.equal(event.user_data.fbc, undefined);
+    assert.equal((event.user_data as Record<string, unknown>).ph, undefined);
+  });
+
+  test('InitiateCheckout hashes a signed-in customer phone', () => {
+    const event = buildInitiateCheckoutEvent(
+      { eventId: 'ic_2', items: [], subtotal: 0, customerPhone: '01012345678', customerEmail: 'A@B.com' },
+      {}
+    );
+    assert.deepEqual((event.user_data as Record<string, unknown>).ph, [sha('201012345678')]);
+    assert.deepEqual((event.user_data as Record<string, unknown>).em, [sha('a@b.com')]);
   });
 });
 

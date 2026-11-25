@@ -152,7 +152,7 @@ export function DeliveryLocationPicker() {
     <fieldset style={{ border: 'none', padding: 0, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <legend style={{ fontFamily: 'var(--display)', fontSize: 22, marginBottom: 4 }}>Delivery Location</legend>
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
-        Use your location to make delivery easier and more accurate — or enter your address manually below.
+        Type your address, or share your location on the map (optional) to help the courier find you.
       </p>
 
       {mode === 'choose' && (
@@ -212,22 +212,10 @@ export function DeliveryLocationPicker() {
       )}
 
       {mode === 'choose' && (
-        <button
-          type="button"
-          onClick={() => setMode('manual')}
-          style={{
-            background: 'none',
-            border: 'none',
-            padding: 0,
-            color: 'var(--ink-soft)',
-            textDecoration: 'underline',
-            fontSize: 12,
-            cursor: 'pointer',
-            textAlign: 'left',
-            width: 'fit-content',
-          }}
-        >
-          Enter address manually instead
+        // A full-width button, not a small link: most shoppers type their
+        // address, and the map is optional.
+        <button type="button" className="btn btn-outline" style={{ width: '100%' }} onClick={() => setMode('manual')}>
+          ✍️ Type My Address
         </button>
       )}
 

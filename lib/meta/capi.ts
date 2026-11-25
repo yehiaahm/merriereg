@@ -4,8 +4,9 @@ import { cleanMetaCookie, fbcFromFbclid } from '@/lib/meta/attribution';
 
 // Meta Conversions API (server-side events). Sends the same Purchase the
 // browser Pixel sends from the order page, with the same event_id (the order
-// id), so Meta counts it once but still receives it when an ad blocker or a
-// closed tab stops the browser event.
+// id), and the same InitiateCheckout the checkout page sends (event_id made
+// on the server per page render), so Meta counts each once but still receives
+// it when an ad blocker or a closed tab stops the browser event.
 //
 // Disabled (every call is a no-op) unless BOTH are set on the server:
 //   META_PIXEL_ID            — same ID as NEXT_PUBLIC_META_PIXEL_ID
@@ -62,7 +63,11 @@ export function normalizeEgyptPhone(phone: string): string | null {
 type PurchaseOrder = {
   id: string;
   orderNumber: string;
-  total: number; // piastres
+  // Piastres. The event value is the products after discount, without
+  // shipping (subtotal − discount), so ROAS in Ads Manager measures product
+  // revenue — shipping is passed through to the courier, not earned.
+  subtotal: number;
+  discount: number;
   customerName: string;
   customerPhone: string;
   customerEmail: string | null;
@@ -79,6 +84,11 @@ export type MetaRequestContext = {
   fbclidTs?: number;
   eventSourceUrl?: string;
 };
+
+/** Products after discount, excluding shipping, in EGP — the value both the Pixel and CAPI report. */
+export function purchaseValueEgp(order: { subtotal: number; discount: number }): number {
+  return piastresToEgp(Math.max(0, order.subtotal - order.discount));
+}
 
 export function buildPurchaseEvent(order: PurchaseOrder, ctx: MetaRequestContext, eventTimeMs: number = Date.now()) {
   const phone = normalizeEgyptPhone(order.customerPhone);
@@ -113,7 +123,7 @@ export function buildPurchaseEvent(order: PurchaseOrder, ctx: MetaRequestContext
     user_data: userData,
     custom_data: {
       currency: 'EGP',
-      value: piastresToEgp(order.total),
+      value: purchaseValueEgp(order),
       order_id: order.orderNumber,
       content_type: 'product',
       content_ids: order.items.map((i) => i.sku),
@@ -123,8 +133,59 @@ export function buildPurchaseEvent(order: PurchaseOrder, ctx: MetaRequestContext
   };
 }
 
-/** Sends a Purchase to the Conversions API. Never throws. */
-export async function sendMetaPurchase(order: PurchaseOrder, ctx: MetaRequestContext): Promise<void> {
+type CheckoutItem = { sku: string; quantity: number; unitPrice: number };
+
+/**
+ * InitiateCheckout for the Conversions API. `eventId` is generated once on the
+ * server when the checkout page renders and handed to the browser Pixel too,
+ * so Meta keeps one of the two. Only browser identifiers are sent (plus the
+ * signed-in customer's email/phone, hashed, when there is one) — a guest has
+ * typed nothing yet at this point.
+ */
+export function buildInitiateCheckoutEvent(
+  checkout: {
+    eventId: string;
+    items: CheckoutItem[];
+    subtotal: number; // piastres
+    customerEmail?: string | null;
+    customerPhone?: string | null;
+  },
+  ctx: MetaRequestContext,
+  eventTimeMs: number = Date.now()
+) {
+  const phone = checkout.customerPhone ? normalizeEgyptPhone(checkout.customerPhone) : null;
+  const fbc = cleanMetaCookie(ctx.fbc) ?? (ctx.fbclid ? fbcFromFbclid(ctx.fbclid, ctx.fbclidTs) : undefined);
+  const fbp = cleanMetaCookie(ctx.fbp);
+  const ip = ctx.clientIp && ctx.clientIp !== 'unknown' ? ctx.clientIp : undefined;
+
+  return {
+    event_name: 'InitiateCheckout',
+    event_time: Math.floor(eventTimeMs / 1000),
+    event_id: checkout.eventId,
+    action_source: 'website',
+    ...(ctx.eventSourceUrl ? { event_source_url: ctx.eventSourceUrl } : {}),
+    user_data: {
+      country: [sha256('eg')],
+      ...(phone ? { ph: [sha256(phone)], external_id: [sha256(phone)] } : {}),
+      ...(checkout.customerEmail ? { em: [sha256(checkout.customerEmail.trim().toLowerCase())] } : {}),
+      ...(ip ? { client_ip_address: ip } : {}),
+      ...(ctx.userAgent ? { client_user_agent: ctx.userAgent.slice(0, 500) } : {}),
+      ...(fbp ? { fbp } : {}),
+      ...(fbc ? { fbc } : {}),
+    },
+    custom_data: {
+      currency: 'EGP',
+      value: piastresToEgp(checkout.subtotal),
+      content_type: 'product',
+      content_ids: checkout.items.map((i) => i.sku),
+      contents: checkout.items.map((i) => ({ id: i.sku, quantity: i.quantity, item_price: piastresToEgp(i.unitPrice) })),
+      num_items: checkout.items.reduce((n, i) => n + i.quantity, 0),
+    },
+  };
+}
+
+/** Posts events to the Conversions API. Never throws; logs Meta's error text only. */
+async function postMetaEvents(events: object[], label: string): Promise<void> {
   if (!isMetaCapiConfigured()) return;
   const pixelId = process.env.META_PIXEL_ID!.trim();
   const token = process.env.META_CAPI_ACCESS_TOKEN!.trim();
@@ -136,7 +197,7 @@ export async function sendMetaPurchase(order: PurchaseOrder, ctx: MetaRequestCon
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        data: [buildPurchaseEvent(order, ctx)],
+        data: events,
         access_token: token,
         ...(testCode ? { test_event_code: testCode } : {}),
       }),
@@ -145,9 +206,24 @@ export async function sendMetaPurchase(order: PurchaseOrder, ctx: MetaRequestCon
     if (!res.ok) {
       // Log Meta's error message only — never the request body (it holds hashed PII and the token).
       const text = await res.text().catch(() => '');
-      console.error(`[meta-capi] Purchase for ${order.orderNumber} rejected: ${res.status} ${text.slice(0, 300)}`);
+      console.error(`[meta-capi] ${label} rejected: ${res.status} ${text.slice(0, 300)}`);
     }
   } catch (err) {
-    console.error(`[meta-capi] Purchase for ${order.orderNumber} failed:`, err instanceof Error ? err.message : err);
+    console.error(`[meta-capi] ${label} failed:`, err instanceof Error ? err.message : err);
   }
+}
+
+/** Sends a Purchase to the Conversions API. Never throws. */
+export async function sendMetaPurchase(order: PurchaseOrder, ctx: MetaRequestContext): Promise<void> {
+  if (!isMetaCapiConfigured()) return;
+  await postMetaEvents([buildPurchaseEvent(order, ctx)], `Purchase for ${order.orderNumber}`);
+}
+
+/** Sends an InitiateCheckout to the Conversions API. Never throws. */
+export async function sendMetaInitiateCheckout(
+  checkout: Parameters<typeof buildInitiateCheckoutEvent>[0],
+  ctx: MetaRequestContext
+): Promise<void> {
+  if (!isMetaCapiConfigured()) return;
+  await postMetaEvents([buildInitiateCheckoutEvent(checkout, ctx)], 'InitiateCheckout');
 }

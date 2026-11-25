@@ -23,7 +23,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? 'Invalid request' }, { status: 400 });
+    const issue = parsed.error.issues[0];
+    const field = typeof issue?.path[0] === 'string' ? issue.path[0] : undefined;
+    // `field` lets the form show the message next to the input it belongs to.
+    return NextResponse.json({ error: issue?.message ?? 'Invalid request', ...(field ? { field } : {}) }, { status: 400 });
   }
   const input = parsed.data;
 

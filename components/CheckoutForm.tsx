@@ -22,6 +22,26 @@ type CartItem = {
 
 export type CheckoutOffer = { rule: DiscountRule; label: string };
 
+// Mirrors checkoutSchema's phone rule (lib/validation.ts) so a typo is flagged
+// next to the field before submitting; the server still validates.
+const EG_PHONE = /^01[0125][0-9]{8}$/;
+function cleanPhone(raw: string): string {
+  let v = raw.replace(/[\s\-()]/g, '');
+  if (v.startsWith('+20')) v = v.slice(3);
+  else if (v.startsWith('0020')) v = v.slice(4);
+  else if (v.startsWith('+2')) v = v.slice(2);
+  return v;
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+  if (!message) return null;
+  return (
+    <p id={id} className="field-error" role="alert" style={{ margin: '4px 0 0' }}>
+      {message}
+    </p>
+  );
+}
+
 export function CheckoutForm({
   items,
   subtotal,
@@ -131,7 +151,27 @@ export function CheckoutForm({
     setErrors({});
     setSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+
+    // Inline checks for the mistakes that most often block an order. Nothing
+    // typed is cleared — the form fields keep their values.
+    const clientErrors: Record<string, string> = {};
+    if (String(formData.get('customerName') ?? '').trim().length < 2) {
+      clientErrors.customerName = 'Enter your full name.';
+    }
+    if (!EG_PHONE.test(cleanPhone(String(formData.get('customerPhone') ?? '')))) {
+      clientErrors.customerPhone = 'Enter a valid Egyptian mobile number, e.g. 010xxxxxxxx.';
+    }
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors);
+      setSubmitting(false);
+      const first = form.querySelector<HTMLElement>(`#${Object.keys(clientErrors)[0]}`);
+      first?.focus();
+      first?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     const deliveryLat = formData.get('deliveryLat');
     const deliveryLng = formData.get('deliveryLng');
     const payload = {
@@ -159,7 +199,16 @@ export function CheckoutForm({
       });
       const data = await res.json();
       if (!res.ok) {
-        setFormError(data.error ?? 'Could not place your order.');
+        const message = data.error ?? 'Could not place your order.';
+        setFormError(message);
+        // Show validation errors next to the field they belong to as well.
+        if (typeof data.field === 'string') {
+          setErrors({ [data.field]: message });
+          const el =
+            form.querySelector<HTMLElement>(`#${data.field}`) ??
+            (data.field === 'shippingStreet' ? form.querySelector<HTMLElement>('#delivery-location-error') : null);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         setSubmitting(false);
         return;
       }
@@ -197,7 +246,18 @@ export function CheckoutForm({
           )}
           <div className="field">
             <label htmlFor="customerName">Full name</label>
-            <input id="customerName" name="customerName" required minLength={2} defaultValue={customer?.name} />
+            <input
+              id="customerName"
+              name="customerName"
+              required
+              minLength={2}
+              autoComplete="name"
+              defaultValue={customer?.name}
+              aria-invalid={!!errors.customerName}
+              aria-describedby={errors.customerName ? 'customerName-error' : undefined}
+              onChange={() => errors.customerName && setErrors(({ customerName: _ignored, ...rest }) => rest)}
+            />
+            <FieldError id="customerName-error" message={errors.customerName} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div className="field">
@@ -206,9 +266,16 @@ export function CheckoutForm({
                 id="customerPhone"
                 name="customerPhone"
                 required
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 placeholder="010xxxxxxxx"
                 defaultValue={customer?.phone ?? undefined}
+                aria-invalid={!!errors.customerPhone}
+                aria-describedby={errors.customerPhone ? 'customerPhone-error' : undefined}
+                onChange={() => errors.customerPhone && setErrors(({ customerPhone: _ignored, ...rest }) => rest)}
               />
+              <FieldError id="customerPhone-error" message={errors.customerPhone} />
             </div>
             <div className="field">
               <label htmlFor="customerEmail">Email (optional)</label>
@@ -240,6 +307,7 @@ export function CheckoutForm({
         </fieldset>
 
         <DeliveryLocationPicker />
+        <FieldError id="delivery-location-error" message={errors.shippingStreet} />
 
         <div className="field">
           <label htmlFor="shippingNotes">Delivery notes (optional)</label>
@@ -266,26 +334,33 @@ export function CheckoutForm({
             />
             Cash on Delivery
           </label>
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              border: '1px solid var(--line)',
-              padding: 14,
-              cursor: paymobEnabled ? 'pointer' : 'not-allowed',
-              opacity: paymobEnabled ? 1 : 0.5,
-            }}
-          >
-            <input
-              type="radio"
-              name="paymentMethodRadio"
-              disabled={!paymobEnabled}
-              checked={paymentMethod === 'PAYMOB_CARD'}
-              onChange={() => setPaymentMethod('PAYMOB_CARD')}
-            />
-            Pay Online (Card / Apple Pay){!paymobEnabled && ' — coming soon'}
-          </label>
+          {/* Only offered once Paymob is configured — a greyed-out "coming soon"
+              option at the last step reads as an unfinished store. */}
+          {paymobEnabled && (
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                border: '1px solid var(--line)',
+                padding: 14,
+                cursor: 'pointer',
+              }}
+            >
+              <input
+                type="radio"
+                name="paymentMethodRadio"
+                checked={paymentMethod === 'PAYMOB_CARD'}
+                onChange={() => setPaymentMethod('PAYMOB_CARD')}
+              />
+              Pay Online (Card / Apple Pay)
+            </label>
+          )}
+          {!paymobEnabled && (
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: 0 }}>
+              Pay in cash when your order arrives. We&apos;ll call you to confirm before shipping.
+            </p>
+          )}
         </fieldset>
       </div>
 

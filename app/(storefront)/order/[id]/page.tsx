@@ -5,6 +5,7 @@ import { formatEGP, piastresToEgp } from '@/lib/money';
 import { getCurrentCustomer } from '@/lib/customer-auth';
 import { OrderStatusTimeline } from '@/components/OrderStatusTimeline';
 import { MetaEvent } from '@/components/MetaEvent';
+import { purchaseValueEgp } from '@/lib/meta/capi';
 
 export const metadata = { title: 'Order Confirmation' };
 
@@ -63,7 +64,8 @@ export default async function OrderConfirmationPage({
             content_ids: order.items.map((i) => i.sku),
             contents: order.items.map((i) => ({ id: i.sku, quantity: i.quantity, item_price: piastresToEgp(i.unitPrice) })),
             num_items: order.items.reduce((n, i) => n + i.quantity, 0),
-            value: piastresToEgp(order.total),
+            // Products after discount, no shipping — same value the server-side event sends.
+            value: purchaseValueEgp(order),
             currency: 'EGP',
             order_id: order.orderNumber,
           }}
@@ -78,7 +80,13 @@ export default async function OrderConfirmationPage({
 
       <span className="eyebrow" style={{ color: 'var(--accent)' }}>Order Confirmed</span>
       <h1 style={{ fontSize: 'clamp(28px, 5vw, 44px)', margin: '8px 0 4px' }}>Thank you, {order.customerName.split(' ')[0]}.</h1>
-      <p style={{ color: 'var(--ink-soft)', marginBottom: 32 }}>Order #{order.orderNumber}</p>
+      <p style={{ color: 'var(--ink-soft)', marginBottom: 12 }}>Order #{order.orderNumber}</p>
+      {order.paymentMethod === 'COD' && (
+        <p style={{ border: '1px solid var(--accent)', padding: '12px 14px', marginBottom: 32, fontSize: 14 }}>
+          <strong>We&apos;ll call you on {order.customerPhone} to confirm your order</strong> before it ships. Keep your
+          phone nearby — you pay in cash when it arrives.
+        </p>
+      )}
 
       <OrderStatusTimeline status={order.status} />
 

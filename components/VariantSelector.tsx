@@ -32,6 +32,15 @@ type Variant = {
   sku: string;
 };
 
+// Shoppers expect sizes smallest → largest; the database returns variants in
+// insertion order (which showed "S · L · M · XL"). Unknown labels keep their
+// relative order after the known ones.
+const SIZE_ORDER = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', 'XXXL', '3XL', '4XL'];
+function sizeRank(size: string): number {
+  const i = SIZE_ORDER.indexOf(size.trim().toUpperCase());
+  return i === -1 ? SIZE_ORDER.length : i;
+}
+
 type ProductImage = { url: string; altText: string | null; colorValue: string | null };
 
 export function VariantSelector({
@@ -54,10 +63,17 @@ export function VariantSelector({
   const [selectedColor, setSelectedColor] = useState(colors[0] ?? '');
 
   const sizesForColor = useMemo(
-    () => variants.filter((v) => v.color === selectedColor),
+    () =>
+      variants
+        .filter((v) => v.color === selectedColor)
+        .sort((a, b) => sizeRank(a.size) - sizeRank(b.size)),
     [variants, selectedColor]
   );
-  const [selectedSize, setSelectedSize] = useState(sizesForColor[0]?.size ?? '');
+  // No size is pre-selected: a default "S" was silently shipped to shoppers
+  // who never chose it, which turns into a wrong-size refusal at the door.
+  const [selectedSize, setSelectedSize] = useState('');
+  const [sizeError, setSizeError] = useState(false);
+  const sizeGroupRef = useRef<HTMLDivElement>(null);
 
   const selectedVariant = useMemo(
     () => variants.find((v) => v.color === selectedColor && v.size === selectedSize) ?? null,
@@ -94,10 +110,12 @@ export function VariantSelector({
     setActiveImageIndex(0);
     setIsAutoPlaying(true);
     const stillValid = variants.find((v) => v.color === color && v.size === selectedSize);
-    if (!stillValid) {
-      const firstForColor = variants.find((v) => v.color === color);
-      setSelectedSize(firstForColor?.size ?? '');
-    }
+    if (!stillValid) setSelectedSize('');
+  }
+
+  function chooseSize(size: string) {
+    setSelectedSize(size);
+    setSizeError(false);
   }
 
   // Applies a size chosen in Find My Size to the real selector. Only sizes
@@ -109,7 +127,7 @@ export function VariantSelector({
       show(`${size} isn't available in ${selectedColor}.`, 'error');
       return;
     }
-    setSelectedSize(variant.size);
+    chooseSize(variant.size);
     show(`Size ${variant.size} selected.`);
     // The dialog closes and returns focus to its trigger; move it to the size instead.
     setTimeout(() => document.getElementById(`size-btn-${variant.id}`)?.focus(), 0);
@@ -120,11 +138,22 @@ export function VariantSelector({
     setActiveImageIndex(i);
   }
 
-  const isOutOfStock = !selectedVariant || !selectedVariant.active || selectedVariant.stock <= 0;
+  // Price shown before a size is picked: the color's first purchasable variant.
+  const displayVariant =
+    selectedVariant ?? sizesForColor.find((v) => v.active && v.stock > 0) ?? sizesForColor[0] ?? null;
+  const colorSoldOut = !sizesForColor.some((v) => v.active && v.stock > 0);
+  const isOutOfStock = selectedVariant ? !selectedVariant.active || selectedVariant.stock <= 0 : colorSoldOut;
   const isLowStock = selectedVariant && selectedVariant.stock > 0 && selectedVariant.stock <= 3;
 
   async function handleAddToCart(shouldRedirect = false) {
-    if (!selectedVariant || isOutOfStock || adding || buying) return;
+    if (adding || buying) return;
+    if (!selectedVariant) {
+      setSizeError(true);
+      show('Choose your size first.', 'error');
+      sizeGroupRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    if (isOutOfStock) return;
     if (shouldRedirect) setBuying(true);
     else setAdding(true);
 
@@ -132,7 +161,10 @@ export function VariantSelector({
       const res = await fetch('/api/cart', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId: selectedVariant.id, quantity }),
+        // Buy Now checks out exactly this item and quantity: it sets the line
+        // instead of adding to whatever is already in the cart (pressing Add to
+        // Cart then Buy Now used to land on checkout with quantity 2).
+        body: JSON.stringify({ variantId: selectedVariant.id, quantity, mode: shouldRedirect ? 'set' : 'add' }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -181,14 +213,16 @@ export function VariantSelector({
           onInteract={stopAutoplay}
         />
         {galleryImages.length > 1 && (
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          // One scrollable row, so on phones the price, sizes and Buy Now
+          // aren't pushed below a second row of thumbnails.
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }} className="thumb-row">
             {galleryImages.map((img, i) => (
               <button
                 key={img.url + i}
                 onClick={() => selectImage(i)}
                 style={{
-                  width: 64,
-                  height: 80,
+                  width: 56,
+                  height: 70,
                   flexShrink: 0,
                   position: 'relative',
                   border: i === activeImageIndex ? '2px solid var(--accent)' : '1px solid var(--line)',
@@ -198,7 +232,7 @@ export function VariantSelector({
                 }}
                 aria-label={`Show image ${i + 1}`}
               >
-                <Image src={img.url} alt="" fill sizes="64px" style={{ objectFit: 'cover' }} />
+                <Image src={img.url} alt="" fill sizes="56px" style={{ objectFit: 'cover' }} />
               </button>
             ))}
           </div>
@@ -208,12 +242,12 @@ export function VariantSelector({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
           <h1 style={{ fontSize: 'clamp(28px, 4vw, 44px)' }}>{productName}</h1>
-          {selectedVariant && (
+          {displayVariant && (
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginTop: 8 }}>
-              <span style={{ fontSize: 22, fontWeight: 700 }}>{formatEGP(selectedVariant.price)}</span>
-              {selectedVariant.compareAtPrice && selectedVariant.compareAtPrice > selectedVariant.price && (
+              <span style={{ fontSize: 22, fontWeight: 700 }}>{formatEGP(displayVariant.price)}</span>
+              {displayVariant.compareAtPrice && displayVariant.compareAtPrice > displayVariant.price && (
                 <span style={{ fontSize: 16, color: 'var(--ink-soft)', textDecoration: 'line-through' }}>
-                  {formatEGP(selectedVariant.compareAtPrice)}
+                  {formatEGP(displayVariant.compareAtPrice)}
                 </span>
               )}
             </div>
@@ -249,9 +283,11 @@ export function VariantSelector({
           </div>
         </div>
 
-        <div>
+        <div ref={sizeGroupRef}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span className="eyebrow">Size</span>
+            <span className="eyebrow" id="size-label">
+              Size{selectedSize ? `: ${selectedSize}` : ''}
+            </span>
             <SizeFinder
               productName={productName}
               chart={sizeChart}
@@ -260,21 +296,29 @@ export function VariantSelector({
               onApply={applyRecommendedSize}
             />
           </div>
-          <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+          <div
+            role="group"
+            aria-labelledby="size-label"
+            style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}
+          >
             {sizesForColor.map((v) => {
               const disabled = !v.active || v.stock <= 0;
               return (
                 <button
                   key={v.id}
                   id={`size-btn-${v.id}`}
-                  onClick={() => !disabled && setSelectedSize(v.size)}
+                  onClick={() => !disabled && chooseSize(v.size)}
                   disabled={disabled}
                   style={{
                     minWidth: 48,
                     minHeight: 44,
                     padding: '0 12px',
                     border:
-                      v.size === selectedSize ? '2px solid var(--accent)' : '1px solid var(--line)',
+                      v.size === selectedSize
+                        ? '2px solid var(--accent)'
+                        : sizeError
+                          ? '1px solid var(--danger)'
+                          : '1px solid var(--line)',
                     background: disabled ? 'var(--cream-2)' : '#fff',
                     color: disabled ? 'var(--ink-soft)' : 'var(--ink)',
                     textDecoration: disabled ? 'line-through' : 'none',
@@ -289,10 +333,15 @@ export function VariantSelector({
               );
             })}
           </div>
+          {sizeError && (
+            <p role="alert" style={{ color: 'var(--danger)', fontSize: 13, fontWeight: 700, margin: '8px 0 0' }}>
+              Choose your size first.
+            </p>
+          )}
         </div>
 
         <div style={{ fontSize: 13, fontWeight: 700 }}>
-          {isOutOfStock ? (
+          {!selectedVariant && !colorSoldOut ? null : isOutOfStock ? (
             <span style={{ color: 'var(--danger)' }}>Out of stock</span>
           ) : isLowStock ? (
             <span style={{ color: 'var(--accent)' }}>Only {selectedVariant!.stock} left</span>
