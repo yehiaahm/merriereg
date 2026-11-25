@@ -19,9 +19,14 @@ const MAX_BUCKETS = 50_000;
  * real topology; with 0 the header is ignored entirely.
  */
 export function clientIp(req: NextRequest): string {
+  return clientIpFromHeaders(req.headers);
+}
+
+/** Same as clientIp, for server components that only have next/headers' headers(). */
+export function clientIpFromHeaders(headers: Headers): string {
   const hops = Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? '1', 10);
   if (!Number.isFinite(hops) || hops <= 0) return 'unknown';
-  const parts = (req.headers.get('x-forwarded-for') ?? '')
+  const parts = (headers.get('x-forwarded-for') ?? '')
     .split(',')
     .map((p) => p.trim())
     .filter(Boolean);

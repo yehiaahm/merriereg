@@ -4,6 +4,9 @@ import { GOVERNORATES } from '@/lib/shipping';
 export const addToCartSchema = z.object({
   variantId: z.string().min(1),
   quantity: z.number().int().min(1).max(20),
+  // 'add' (Add to Cart) adds to the line; 'set' (Buy Now) makes the line
+  // exactly `quantity`, so Buy Now never checks out a doubled quantity.
+  mode: z.enum(['add', 'set']).default('add'),
 });
 
 export const updateCartItemSchema = z.object({
