@@ -28,9 +28,14 @@ const CSP = [
   // confirmed coordinates into a human-readable address (no API key needed).
   `connect-src 'self' https://nominatim.openstreetmap.org${posthogHost ? ` ${posthogHost}` : ''} https://www.facebook.com https://connect.facebook.net`,
   "worker-src 'self' blob:",
+  // Meta's Pixel sends larger events (e.g. with its automatic page/product
+  // details) as a POST from a hidden iframe to www.facebook.com/tr instead of
+  // an image request; without these two, those events are silently dropped.
+  // Only that one Meta host is allowed — no wildcard.
+  "frame-src 'self' https://www.facebook.com",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  "form-action 'self' https://www.facebook.com",
   "frame-ancestors 'self'",
 ].join('; ');
 
